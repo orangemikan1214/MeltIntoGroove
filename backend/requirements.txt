@@ -1,0 +1,5 @@
+fastapi>=0.115
+uvicorn>=0.30
+python-dotenv>=1.0
+pymysql>=1.1
+cryptography>=42      # pymysql が Azure の認証方式（caching_sha2_password）で使う

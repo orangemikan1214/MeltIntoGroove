@@ -9,7 +9,7 @@
 #   DB_SSL_CA   = 配布された SSL証明書のパス（任意。入れると Workbench の「Verify CA」と同じく相手を確かめる）
 
 import os
-
+from contextlib import contextmanager 
 import pymysql
 from dotenv import load_dotenv
 
@@ -49,3 +49,154 @@ def fetch_all(query: str, params: tuple = ()) -> list[dict]:
             return cur.fetchall()
     finally:
         conn.close()
+
+# ===== 投票機能（ここから） =====
+@contextmanager
+def transaction():
+    """書き込み用。with の中が全部成功したら commit、途中で失敗したら rollback（全部なかったことに）する"""
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            yield cur
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+def create_vote(token: str, scene_code: str, user_id: str, product_ids: list[str], days: int = 14) -> int:
+    """投票ページを作る（votes に1行、vote_items に候補の行）。作った vote_id を返す。
+    途中で失敗したら、votes の行も取り消される。"""
+    with transaction() as cur:
+        cur.execute(
+            "INSERT INTO votes (token, scene_code, user_id, expires_at) "
+            "VALUES (%s, %s, %s, DATE_ADD(NOW(), INTERVAL %s DAY))",
+            (token, scene_code, user_id, days),
+        )
+        vote_id = cur.lastrowid
+        cur.executemany(
+            "INSERT INTO vote_items (vote_id, product_id, sort_order) VALUES (%s, %s, %s)",
+            [(vote_id, product_id, order) for order, product_id in enumerate(product_ids, start=1)],
+        )
+    return vote_id
+
+def get_vote(token: str) -> dict | None:
+    """token の投票ページを返す。なければ None。
+    候補（商品）、賛成・反対の数、投票者ごとの回答、期限切れかどうかを入れる。"""
+
+    # 1. 投票ページ本体（期限切れかどうかは、MySQLの NOW() と比べて決める）
+    votes = fetch_all(
+        "SELECT vote_id, token, expires_at, (expires_at <= NOW()) AS expired FROM votes WHERE token = %s",
+        (token,),
+    )
+    if not votes:
+        return None
+    vote = votes[0]
+
+    # 2. 候補の商品（名前や価格は products から持ってくる）
+    items = fetch_all(
+        "SELECT vi.product_id, p.product_name, p.brand, p.price, p.rating, p.review_count "
+        "FROM vote_items vi LEFT JOIN products p ON p.product_id = vi.product_id "
+        "WHERE vi.vote_id = %s ORDER BY vi.sort_order",
+        (vote["vote_id"],),
+    )
+
+    # 3. これまでの投票（1票=1行）
+    ballots = fetch_all(
+        "SELECT voter_key, nickname, product_id, value FROM vote_ballots WHERE vote_id = %s ORDER BY ballot_id",
+        (vote["vote_id"],),
+    )
+
+    # 4. 商品ごとの賛成・反対の数を数える
+    for item in items:
+        item["good_count"] = sum(1 for b in ballots if b["product_id"] == item["product_id"] and b["value"] == "good")
+        item["bad_count"] = sum(1 for b in ballots if b["product_id"] == item["product_id"] and b["value"] == "bad")
+
+    # 5. 投票者ごとにまとめる（voter_key は他の人に見せないので、返す内容には入れない）
+    voters = {}
+    for b in ballots:
+        voter = voters.setdefault(b["voter_key"], {"nickname": b["nickname"] or "", "answers": {}})
+        voter["answers"][b["product_id"]] = b["value"]
+
+    return {
+        "token": vote["token"],
+        "expires_at": vote["expires_at"],
+        "expired": bool(vote["expired"]),
+        "items": items,
+        "voters": list(voters.values()),
+    }
+
+def get_vote_for_response(token: str) -> dict | None:
+    """投票を受け付けてよいかの判断に使う情報（期限切れか、候補の商品IDは何か）。なければ None"""
+    votes = fetch_all(
+        "SELECT vote_id, (expires_at <= NOW()) AS expired FROM votes WHERE token = %s",
+        (token,),
+    )
+    if not votes:
+        return None
+    vote = votes[0]
+    items = fetch_all("SELECT product_id FROM vote_items WHERE vote_id = %s", (vote["vote_id"],))
+    return {
+        "vote_id": vote["vote_id"],
+        "expired": bool(vote["expired"]),
+        "product_ids": {item["product_id"] for item in items},
+    }
+
+
+def save_ballots(vote_id: int, voter_key: str, nickname: str, answers: dict[str, str]) -> None:
+    """全候補ぶんの回答を保存する。同じ voter_key の再投票は上書き。途中で失敗したら全部取り消し"""
+    with transaction() as cur:
+        cur.executemany(
+            "INSERT INTO vote_ballots (vote_id, product_id, voter_key, value, nickname) "
+            "VALUES (%s, %s, %s, %s, %s) "
+            "ON DUPLICATE KEY UPDATE value = VALUES(value), nickname = VALUES(nickname), voted_at = NOW()",
+            [(vote_id, product_id, voter_key, value, nickname) for product_id, value in answers.items()],
+        )
+
+def list_votes(user_id: str) -> list[dict]:
+    """user_id が作った投票ページの一覧（新しい順）。期限切れも含める"""
+
+    # 1. 投票ページの一覧（回答した人数は、サブクエリで数える）
+    votes = fetch_all(
+        "SELECT v.vote_id, v.token, v.created_at, v.expires_at, "
+        "(v.expires_at <= NOW()) AS expired, "
+        "(SELECT COUNT(DISTINCT b.voter_key) FROM vote_ballots b WHERE b.vote_id = v.vote_id) AS voter_count "
+        "FROM votes v WHERE v.user_id = %s "
+        "ORDER BY v.created_at DESC, v.vote_id DESC",
+        (user_id,),
+    )
+    if not votes:
+        return []
+
+    # 2. 全部の投票ページの候補を、まとめて1回で取る
+    ids = [v["vote_id"] for v in votes]
+    placeholders = ",".join(["%s"] * len(ids))
+    items = fetch_all(
+        "SELECT vi.vote_id, vi.product_id, p.product_name "
+        "FROM vote_items vi LEFT JOIN products p ON p.product_id = vi.product_id "
+        f"WHERE vi.vote_id IN ({placeholders}) "
+        "ORDER BY vi.vote_id, vi.sort_order",
+        tuple(ids),
+    )
+
+    # 3. 候補を、投票ページごとにまとめる
+    by_vote = {}
+    for item in items:
+        by_vote.setdefault(item["vote_id"], []).append(
+            {"product_id": item["product_id"], "product_name": item["product_name"]}
+        )
+
+    return [
+        {
+            "token": v["token"],
+            "url_path": f"/votes/{v['token']}",
+            "created_at": v["created_at"],
+            "expires_at": v["expires_at"],
+            "expired": bool(v["expired"]),
+            "voter_count": v["voter_count"],
+            "items": by_vote.get(v["vote_id"], []),
+        }
+        for v in votes
+    ]
+# ===== 投票機能（ここまで） =====

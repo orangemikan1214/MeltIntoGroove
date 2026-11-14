@@ -10,10 +10,14 @@
 import os
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-
-from database import fetch_all
+from pydantic import BaseModel, Field
+import secrets
+import uuid
+from typing import Literal
+from database import fetch_all, create_vote, get_vote, get_vote_for_response, save_ballots, list_votes
+from recommend import router as recommend_router  # シーン別の検索（FR-02）
 
 load_dotenv()  # .env を読む（DB の接続情報・CORS の許可）
 
@@ -24,8 +28,10 @@ app = FastAPI(title="Giftia Search API（2週目）")
 # ブラウザは既定で「別オリジンへの通信」を止めるので、API 側が「この画面からは受け付ける」と宣言する。
 # 許可する画面の URL は .env の CORS_ORIGINS に書く（カンマ区切りで複数可）。空なら何も許可しない。
 origins = [o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",") if o.strip()]
-app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["GET"], allow_headers=["*"])
+app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["GET", "POST"], allow_headers=["*"])
 
+# シーン別の検索 API（recommend.py）をつなぐ
+app.include_router(recommend_router)
 
 @app.get("/api/health")
 def health():
@@ -88,3 +94,95 @@ def to_gift(r: dict) -> dict:
         "reviewCount": r["review_count"],
         "description": r.get("description", ""),  #追加。DB に列がない場合は空文字
     }
+# ===== 投票機能（ここから） =====
+CURRENT_USER_ID = "demo-user"          # ログイン済みの仮ユーザー（ログインを作ったら差し替える）
+SCENE_TAGS = {"farewell": "送別"}      # シーンのコード → product_scenes の scene_tag
+
+
+class VoteCreate(BaseModel):
+    scene_code: str
+    product_ids: list[str]
+
+
+@app.post("/api/votes", status_code=201)
+def post_vote(body: VoteCreate):
+    """投票ページを作る"""
+    ids = body.product_ids
+
+    # 1. 入力のチェック（おかしければ 422 を返して、ここで終わる）
+    scene_tag = SCENE_TAGS.get(body.scene_code)
+    if scene_tag is None:
+        raise HTTPException(status_code=422, detail="このシーンは対応していません")
+    if not 2 <= len(ids) <= 5:
+        raise HTTPException(status_code=422, detail="商品は2〜5個選んでください")
+    if len(set(ids)) != len(ids):
+        raise HTTPException(status_code=422, detail="同じ商品は2回選べません")
+
+    # 2. 送別向けの商品だけか、MySQLで確かめる
+    placeholders = ",".join(["%s"] * len(ids))   # 商品が3個なら「%s,%s,%s」
+    rows = fetch_all(
+        f"SELECT product_id FROM product_scenes WHERE scene_tag = %s AND product_id IN ({placeholders})",
+        (scene_tag, *ids),
+    )
+    if {row["product_id"] for row in rows} != set(ids):
+        raise HTTPException(status_code=422, detail="送別向けではない商品が含まれています")
+
+    # 3. 保存する（token は推測されにくい16文字）
+    token = secrets.token_urlsafe(12)
+    vote_id = create_vote(token, body.scene_code, CURRENT_USER_ID, ids)
+
+    # 4. 期限を取り出して返す
+    saved = fetch_all("SELECT expires_at FROM votes WHERE vote_id = %s", (vote_id,))
+    return {"token": token, "url_path": f"/votes/{token}", "expires_at": saved[0]["expires_at"]}
+
+@app.get("/api/votes/{token}")
+def get_vote_detail(token: str):
+    """投票内容の取得（期限切れでも結果は見られる）"""
+    vote = get_vote(token)
+    if vote is None:
+        raise HTTPException(status_code=404, detail="この投票ページは見つかりません")
+    return vote
+
+class AnswerIn(BaseModel):
+    product_id: str
+    value: Literal["good", "bad"]
+
+
+class ResponseIn(BaseModel):
+    voter_key: str
+    nickname: str = Field(default="", max_length=20)
+    answers: list[AnswerIn]
+
+
+@app.post("/api/votes/{token}/responses")
+def post_vote_response(token: str, body: ResponseIn):
+    """投票結果を保存する（全候補ぶんをまとめて受け取る。同じ voter_key の再投票は上書き）"""
+    # 1. voter_key が UUID の形か確かめて、書き方をそろえる（大文字・小文字の違いで別人にならないように）
+    try:
+        voter_key = str(uuid.UUID(body.voter_key))
+    except ValueError:
+        raise HTTPException(status_code=422, detail="voter_key が正しくありません")
+
+    # 2. 投票ページがあるか、期限切れでないか
+    vote = get_vote_for_response(token)
+    if vote is None:
+        raise HTTPException(status_code=404, detail="この投票ページは見つかりません")
+    if vote["expired"]:
+        raise HTTPException(status_code=410, detail="この投票ページは有効期限が切れています")
+
+    # 3. 全部の候補に、1回ずつ答えているか
+    answered = [answer.product_id for answer in body.answers]
+    if len(answered) != len(set(answered)) or set(answered) != vote["product_ids"]:
+        raise HTTPException(status_code=422, detail="すべての候補に回答してください")
+
+    # 4. 保存して、最新の投票内容を返す
+    answers = {answer.product_id: answer.value for answer in body.answers}
+    save_ballots(vote["vote_id"], voter_key, body.nickname.strip(), answers)
+    return get_vote(token)
+
+@app.get("/api/votes")
+def get_my_votes():
+    """マイページの一覧（自分が作った投票ページ。新しい順。期限切れも含む）"""
+    votes = list_votes(CURRENT_USER_ID)
+    return {"total": len(votes), "votes": votes}
+# ===== 投票機能（ここまで） =====

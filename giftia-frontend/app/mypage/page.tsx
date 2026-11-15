@@ -83,7 +83,13 @@ export default function MyPage() {
             {activeVotes.map((vote) => (
               <div key={vote.token} style={styles.voteCard}>
                 <div style={styles.voteInfo}>
-                  <strong style={styles.voteTitle}>{titleOf(vote)}</strong>
+                  <ul style={styles.productNames}>
+                    {vote.items.map((item) => (
+                      <li key={item.product_name ?? item.product_id}>
+                        {item.product_name ?? item.product_id}
+                      </li>
+                    ))}
+                  </ul>
 
                   <p style={styles.meta}>
                     作成日：{formatDate(vote.created_at)}
@@ -94,7 +100,7 @@ export default function MyPage() {
                   <p style={styles.meta}>
                     {vote.voter_count > 0
                       ? `${vote.voter_count}人が回答`
-                      : "0人が回答（まだ票が届いていません）"}
+                      : "0人が回答（まだ投票されていません）"}
                   </p>
                 </div>
 
@@ -125,7 +131,13 @@ export default function MyPage() {
               expiredVotes.map((vote) => (
                 <div key={vote.token} style={styles.expiredCard}>
                   <div>
-                    <strong>{titleOf(vote)}</strong>
+                    <ul style={styles.productNames}>
+                      {vote.items.map((item) => (
+                        <li key={item.product_name ?? item.product_id}>
+                          {item.product_name ?? item.product_id}
+                        </li>
+                      ))}
+                    </ul>
 
                     <p style={styles.meta}>
                       作成日：{formatDate(vote.created_at)}
@@ -284,5 +296,12 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: "#BE185D",
     fontWeight: "bold",
     marginBottom: "16px",
+  },
+  productNames: {
+    margin: 0,
+    paddingLeft: "20px",
+    fontSize: "16px",
+    fontWeight: "bold",
+    lineHeight: 1.7,
   },
 };

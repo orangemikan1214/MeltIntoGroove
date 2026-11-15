@@ -22,7 +22,7 @@ export class ApiError extends Error {
 }
 
 // APIを呼ぶ共通の関数
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     // 送るデータ（body）があるときだけ、「JSONで送る」と伝える
     headers: init?.body ? { "Content-Type": "application/json" } : undefined,

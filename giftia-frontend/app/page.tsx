@@ -7,11 +7,12 @@
 import { useState } from "react";
 import ResultCard from "./ResultCard";
 import { searchGifts, type Gift } from "@/lib/api";
-import Link from "next/link";
+import Header from "./components/Header";
+import SceneCards from "./components/SceneCards";
 
 export default function Home() {
   // ① 状態（変化するデータ）を覚える箱
-  const [mode, setMode] = useState<"standard" | "business">("standard"); // どのタブか
+  const [mode] = useState<"standard" | "business">("standard"); // どのタブか（取引先へのお礼タブは画面から外したので、いまは常に standard）
   const [keyword, setKeyword] = useState("");                             // 入力した言葉
   const [category, setCategory] = useState("");                           // 選んだカテゴリー
   const [sceneTag, setSceneTag] = useState("");                           // 選んだシーンタグ
@@ -38,68 +39,87 @@ export default function Home() {
 
   // ③ 画面
   return (
-    <main className="page">
-      <header className="header"><h1>Giftia</h1></header>
-      {/* 他ページへのリンクを仮追加 */}
-      <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
-      <Link href="/scenes/farewell">送別ギフトの特集ページへ</Link>
-      <Link href="/mypage">マイページへ</Link>
-      </div>
-      {/* ここまでリンク仮追加*/}
+    <>
+      {/* 共通ヘッダー（ロゴ → トップ、マイページ → /mypage） */}
+      <Header />
 
-      {/* タブ：state(mode)＋条件で出し分ける */}
-      <nav className="modes">
-        <button className={mode === "standard" ? "on" : ""} onClick={() => { setMode("standard"); setResults(null); }}>いまの検索</button>
-        <button className={mode === "business" ? "on" : ""} onClick={() => { setMode("business"); setResults(null); }}>取引先へのお礼</button>
-      </nav>
+      {/* 上の帯：見出しと検索フォーム */}
+      <section className="hero">
+        <div className="heroInner">
+          <p className="heroLabel">ギフト専門ストア</p>
+          <h1 className="heroTitle">
+            贈る相手を思い浮かべて、<br />シーンから選ぼう。
+          </h1>
 
-      <form className="form" onSubmit={onSearch}>
-        {mode === "standard" ? (
-          <>
-            <input className="q" value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="キーワード（例：送別 お菓子）" />
-            <select value={category} onChange={(e) => setCategory(e.target.value)}>
-              <option value="">すべてのカテゴリー</option>
-              <option value="コスメ">コスメ</option>
-              <option value="食品">食品</option>
-              <option value="生活雑貨">生活雑貨</option>
-            </select>
-            <select value={sceneTag} onChange={(e) => setSceneTag(e.target.value)}>
-              <option value="">すべてのシーン</option>
-              <option value="誕生日">誕生日</option>
-              <option value="送別">送別</option>
-              <option value="お礼">お礼</option>
-              <option value="母の日">母の日</option>
-              <option value="お歳暮">お歳暮</option>
-              <option value="お中元">お中元</option>
-              <option value="結婚祝い">結婚祝い</option>
-              <option value="父の日">父の日</option>
-              <option value="出産祝い">出産祝い</option>
-            </select>
-          </>
-        ) : (
-          <>
-            <label className="chk"><input type="checkbox" checked={indivWrap} onChange={(e) => setIndivWrap(e.target.checked)} /> 個包装</label>
-            <select value={priceBand} onChange={(e) => setPriceBand(e.target.value)}>
-              <option value="">すべての価格帯</option>
-              <option value="3000">3,000〜5,000円</option>
-              <option value="5000">5,000〜10,000円</option>
-            </select>
-          </>
+          {/* 検索フォーム：「検索」ボタン → onSearch → lib/api.ts の searchGifts → FastAPI の /api/search */}
+          <form className="form" onSubmit={onSearch}>
+            {mode === "standard" ? (
+              <>
+                {/* キーワード → 検索条件 keyword（API には q として送る） */}
+                <label className="field q">
+                  キーワード
+                  <input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="キーワード（例：送別 お菓子）" />
+                </label>
+                {/* カテゴリー → 検索条件 category */}
+                <label className="field sel">
+                  カテゴリー
+                  <select value={category} onChange={(e) => setCategory(e.target.value)}>
+                    <option value="">すべてのカテゴリー</option>
+                    <option value="コスメ">コスメ</option>
+                    <option value="食品">食品</option>
+                    <option value="生活雑貨">生活雑貨</option>
+                  </select>
+                </label>
+                {/* シーン → 検索条件 sceneTag（※lib/api.ts はまだ API に送っていないので、いまは絞り込みに使われない） */}
+                <label className="field sel">
+                  シーン
+                  <select value={sceneTag} onChange={(e) => setSceneTag(e.target.value)}>
+                    <option value="">すべてのシーン</option>
+                    <option value="誕生日">誕生日</option>
+                    <option value="送別">送別</option>
+                    <option value="お礼">お礼</option>
+                    <option value="母の日">母の日</option>
+                    <option value="お歳暮">お歳暮</option>
+                    <option value="お中元">お中元</option>
+                    <option value="結婚祝い">結婚祝い</option>
+                    <option value="父の日">父の日</option>
+                    <option value="出産祝い">出産祝い</option>
+                  </select>
+                </label>
+              </>
+            ) : (
+              <>
+                {/* 取引先へのお礼の検索（タブを画面から外したので、いまは表示されない。処理は残してある） */}
+                <label className="chk"><input type="checkbox" checked={indivWrap} onChange={(e) => setIndivWrap(e.target.checked)} /> 個包装</label>
+                <select value={priceBand} onChange={(e) => setPriceBand(e.target.value)}>
+                  <option value="">すべての価格帯</option>
+                  <option value="3000">3,000〜5,000円</option>
+                  <option value="5000">5,000〜10,000円</option>
+                </select>
+              </>
+            )}
+            <button type="submit">検索</button>
+          </form>
+        </div>
+      </section>
+
+      <main className="page">
+        {/* APIにつながらないときの文言（onSearch の catch で入る） */}
+        {error && <p className="summary">{error}</p>}
+
+        {/* 結果：同じ ResultCard を map で並べる（使い回し） */}
+        {results && (
+          <section className="results">
+            <p className="summary">上位 {results.length} 件</p>
+            <div className="grid">
+              {results.map((g, i) => <ResultCard key={g.id} gift={g} rank={i + 1} />)}
+            </div>
+          </section>
         )}
-        <button type="submit">検索</button>
-      </form>
 
-      {error && <p className="summary">{error}</p>}
-
-      {/* 結果：同じ ResultCard を map で並べる（使い回し） */}
-      {results && (
-        <section>
-          <p className="summary">上位 {results.length} 件</p>
-          <div className="grid">
-            {results.map((g, i) => <ResultCard key={g.id} gift={g} rank={i + 1} />)}
-          </div>
-        </section>
-      )}
-    </main>
+        {/* シーンカード（送別カード → /scenes/farewell） */}
+        <SceneCards />
+      </main>
+    </>
   );
 }

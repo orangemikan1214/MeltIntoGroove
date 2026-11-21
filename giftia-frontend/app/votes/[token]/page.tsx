@@ -3,6 +3,7 @@
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Header from "@/app/components/Header";
 import { ApiError, fetchVote, formatDate, getVoterKey, submitVoteResponse, type VoteAnswerValue, type VoteDetail } from "@/lib/votesApi";
 
 type LoadState = "loading" | "ready" | "notFound" | "error";
@@ -141,18 +142,8 @@ export default function VotePage() {
 
     return (
     <main style={styles.page}>
-      {/* ヘッダー */}
-      <header style={styles.header}>
-        <Link href="/" style={styles.logo}>
-          Giftia
-        </Link>
-
-        <nav style={styles.nav}>
-          <Link href="/mypage" style={styles.navLink}>
-            マイページ
-          </Link>
-        </nav>
-      </header>
+      {/* ヘッダー（共通部品。ロゴ → トップ、マイページ → /mypage） */}
+      <Header />
 
       <div style={styles.container}>
         {/* タイトル */}
@@ -308,29 +299,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     backgroundColor: "#FAF8F5",
     color: "#1F2328",
     fontFamily: '"Noto Sans JP", sans-serif',
-  },
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "16px 5%",
-    backgroundColor: "#FFFFFF",
-    borderBottom: "1px solid #E3DED6",
-  },
-  logo: {
-    fontSize: "24px",
-    fontWeight: "bold",
-    color: "#BE185D",
-    textDecoration: "none",
-  },
-  nav: {
-    display: "flex",
-    gap: "16px",
-  },
-  navLink: {
-    color: "#BE185D",
-    textDecoration: "none",
-    fontWeight: "bold",
   },
   container: {
     maxWidth: "1100px",

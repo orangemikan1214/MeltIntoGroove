@@ -22,11 +22,12 @@ SCENES = {"farewell": "送別"}
 
 # 画面から受け取る年代 → product_facts の fact 名
 AGE_FACTS = {
-    "20s": "age_20s",
-    "30s": "age_30s",
-    "40s": "age_40s",
-    "50s": "age_50s",
-    "60s": "age_60s",
+    "10代": "age_10s",
+    "20代": "age_20s",
+    "30代": "age_30s",
+    "40代": "age_40s",
+    "50代": "age_50s",
+    "60代以上": "age_over60s",
 }
 
 # 「外さない」安心条件（7つ）。(fact 名, 画面に出す名前)
@@ -55,7 +56,7 @@ REVIEW_COUNT_CAP = 50  # レビュー件数がこの数に届かない高評価�
 @router.get("/api/scenes/{scene_code}/recommendations")
 def scene_recommendations(
     scene_code: str,
-    age_group: str = Query(default="", description="相手の年代（20s／30s／40s／50s／60s。空なら指定なし）"),
+    age_group: str = Query(default="", description="相手の年代（10代／20代／30代／40代／50代／60代以上。空なら指定なし）"),
     price_min: int | None = Query(default=None, ge=0, description="予算の下限（以上）"),
     price_max: int | None = Query(default=None, ge=0, description="予算の上限（以下）"),
     limit: int = Query(default=20, ge=1, le=100, description="返す件数"),
@@ -66,7 +67,7 @@ def scene_recommendations(
     if scene_tag is None:
         raise HTTPException(status_code=404, detail="このシーンは準備中です")
     if age_group and age_group not in AGE_FACTS:
-        raise HTTPException(status_code=422, detail="age_group は 20s／30s／40s／50s／60s のどれかです")
+        raise HTTPException(status_code=422, detail="age_group は 10代／20代／30代／40代／50代／60代以上  のどれかです")
     if price_min is not None and price_max is not None and price_min > price_max:
         raise HTTPException(status_code=422, detail="予算の下限が上限より大きくなっています")
 

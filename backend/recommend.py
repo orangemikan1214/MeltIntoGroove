@@ -22,11 +22,12 @@ SCENES = {"farewell": "送別"}
 
 # 画面から受け取る年代 → product_facts の fact 名
 AGE_FACTS = {
+    "10s": "age_10s",
     "20s": "age_20s",
     "30s": "age_30s",
     "40s": "age_40s",
     "50s": "age_50s",
-    "60s": "age_60s",
+    "60s": "age_over60s",
 }
 
 # 「外さない」安心条件（7つ）。(fact 名, 画面に出す名前)

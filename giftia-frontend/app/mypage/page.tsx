@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Header from "@/app/components/Header";
 import { fetchMyVotes, formatDate, type VoteSummary } from "@/lib/votesApi";
 
 export default function MyPage() {
@@ -46,17 +47,8 @@ export default function MyPage() {
 
   return (
     <main style={styles.page}>
-      {/* ヘッダー */}
-      <header style={styles.header}>
-        <Link href="/" style={styles.logo}>
-          Giftia
-        </Link>
-
-        <nav style={styles.nav}>
-          <span style={styles.userName}>ログイン中：[ユーザー名]さん</span>
-          <span style={styles.currentPage}>マイページ</span>
-        </nav>
-      </header>
+      {/* ヘッダー（共通部品。ロゴ → トップ、マイページ → /mypage） */}
+      <Header current="mypage" />
 
       {/* メインコンテンツ */}
       <div style={styles.container}>
@@ -170,37 +162,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     backgroundColor: "#FAF8F5",
     color: "#1F2328",
     fontFamily: '"Noto Sans JP", sans-serif',
-  },
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "16px 5%",
-    backgroundColor: "#FFFFFF",
-    borderBottom: "1px solid #E3DED6",
-    flexWrap: "wrap",
-    gap: "12px",
-  },
-  logo: {
-    fontSize: "24px",
-    fontWeight: "bold",
-    color: "#BE185D",
-    textDecoration: "none",
-  },
-  nav: {
-    display: "flex",
-    alignItems: "center",
-    gap: "20px",
-  },
-  userName: {
-    color: "#5B6168",
-    fontSize: "14px",
-  },
-  currentPage: {
-    color: "#BE185D",
-    fontWeight: "bold",
-    borderBottom: "2px solid #BE185D",
-    padding: "10px 0",
   },
   container: {
     maxWidth: "1000px",

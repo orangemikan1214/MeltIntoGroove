@@ -1,20 +1,85 @@
-/* app/globals.css — Giftia 検索画面の見た目（配布。穴埋めの対象ではない） */
-:root { --ink:#1f2933; --sub:#616e7c; --line:#e4e7eb; --accent:#1b3a5c; --bg:#fafaf9; }
+/* app/globals.css — Giftia 全ページ共通の見た目（色・角丸・フォントの変数と、トップ画面・共通部品のクラス） */
+
+/* ===== 1. 変数（色などに付けた名前。ここを直せば全ページに効く） ===== */
+:root {
+  --bg: #FFF4F4;            /* ページの背景（淡いピンク） */
+  --surface: #FFFFFF;       /* カード・ヘッダーの面 */
+  --ink: #3D2224;           /* 本文の文字（ワイン色の黒） */
+  --sub: #7A4F54;           /* 補足の文字 */
+  --line: #EBCFD0;          /* 区切り線・カードの枠 */
+  --line-strong: #D9B3B6;   /* 入力欄の枠 */
+  --accent: #C72C48;        /* ボタン・リンク（赤みのピンク。白文字が読める濃さ） */
+  --accent-dark: #A01F38;   /* 小さなラベルの文字 */
+  --tint: #FFE0E1;          /* 上の帯・写真枠の薄いピンク */
+  --tint-strong: #FFC9CD;   /* 強調したい写真枠 */
+  --tint-soft: #FFEBEC;     /* 表の入力行など */
+  --rose: #F0606F;          /* 飾りだけに使う色（文字には使わない） */
+  --radius-card: 0;         /* カードの角丸（なし） */
+  --radius-control: 2px;    /* ボタン・入力欄の角丸 */
+}
+
+/* ===== 2. 土台（全ページ） ===== */
 * { box-sizing: border-box; }
-body { margin:0; font-family:"Hiragino Sans","Yu Gothic","Meiryo",sans-serif; color:var(--ink); background:var(--bg); }
-.page { max-width:960px; margin:0 auto; padding:16px; }
-.header h1 { font-size:24px; color:var(--accent); margin:8px 0; }
-.modes { display:flex; gap:8px; margin-top:4px; }
-.modes button { font-size:14px; padding:6px 12px; border:1px solid var(--line); background:#fff; border-radius:999px; cursor:pointer; }
-.modes button.on { background:var(--accent); color:#fff; border-color:var(--accent); }
-.summary { color:var(--sub); font-size:14px; }
-.form { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; align-items:center; }
-.form .q { flex:1 1 240px; }
-.form input, .form select, .form button { font-size:15px; padding:8px 10px; border:1px solid var(--line); border-radius:6px; background:#fff; }
-.form .chk { display:flex; align-items:center; gap:4px; font-size:14px; }
-.form button[type="submit"] { background:var(--accent); color:#fff; border:none; min-width:88px; cursor:pointer; }
-.grid { display:grid; gap:12px; }
-.card { border:1px solid var(--line); border-radius:10px; padding:12px 14px; background:#fff; }
-.card .name { font-size:16px; margin:4px 0; }
-.card .price { font-size:18px; font-weight:700; margin:4px 0; }
-.card .meta { color:var(--sub); font-size:13px; margin:2px 0; }
+/* 本文のフォントは layout.tsx で読み込んだ --font-body */
+body { margin: 0; font-family: var(--font-body), "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif; color: var(--ink); background: var(--bg); }
+/* 見出しは明朝体（layout.tsx の --font-heading） */
+h1, h2, h3 { font-family: var(--font-heading), "Hiragino Mincho ProN", "Yu Mincho", serif; }
+
+/* ===== 3. 共通ヘッダー（components/Header.tsx。全ページで使う） ===== */
+.siteHeader { background: var(--surface); border-bottom: 1px solid var(--line); color: var(--ink); font-family: var(--font-body), "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif; }
+.siteHeaderInner { max-width: 1120px; margin: 0 auto; padding: 0 32px; min-height: 72px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.siteLogo { font-family: var(--font-heading), "Hiragino Mincho ProN", "Yu Mincho", serif; font-weight: 700; font-size: 28px; letter-spacing: 0.04em; color: var(--ink); text-decoration: none; }
+.siteLogoDot { color: var(--rose); }
+.siteNav { display: flex; align-items: center; gap: 20px; font-size: 14px; }
+.siteUser { color: var(--sub); }
+.siteMyPage { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--bg); color: var(--ink); font-weight: 700; text-decoration: none; }
+.siteMyPage:hover { color: var(--accent); border-color: var(--accent); }
+/* マイページを開いているとき（リンクではなく、いまの場所を示す表示） */
+.siteMyPage.current { background: var(--surface); border-color: var(--accent); color: var(--accent); }
+
+/* ===== 4. トップ画面（app/page.tsx） ===== */
+/* 上の帯：見出しと検索フォーム */
+.hero { background: var(--tint); }
+.heroInner { max-width: 1120px; margin: 0 auto; padding: 48px 32px 56px; }
+.heroLabel { margin: 0; font-size: 13px; font-weight: 700; letter-spacing: 0.12em; color: var(--accent-dark); }
+.heroTitle { margin: 12px 0 0; font-weight: 700; font-size: 40px; line-height: 1.5; }
+
+/* 検索フォーム（「検索」ボタンは onSearch → searchGifts → FastAPI に続く） */
+.form { display: flex; flex-wrap: wrap; gap: 12px; margin: 28px 0 0; align-items: flex-end; background: var(--surface); border: 1px solid var(--line); padding: 16px; }
+.form .field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 700; color: var(--sub); }
+.form .q { flex: 1 1 280px; }
+.form .sel { flex: 0 1 200px; }
+.form input, .form select { height: 44px; font-size: 15px; font-family: inherit; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: var(--radius-control); background: var(--surface); color: var(--ink); }
+.form .chk { display: flex; align-items: center; gap: 6px; min-height: 44px; font-size: 14px; }
+.form .chk input { height: auto; }
+.form button[type="submit"] { height: 44px; padding: 0 32px; border: 0; border-radius: var(--radius-control); background: var(--accent); color: #fff; font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer; }
+.form button[type="submit"]:hover { background: var(--accent-dark); }
+
+/* 本文の幅 */
+.page { max-width: 1120px; margin: 0 auto; padding: 56px 32px 72px; }
+
+/* 検索結果（ResultCard.tsx が使うクラス） */
+.results { margin-bottom: 56px; }
+.summary { color: var(--sub); font-size: 14px; }
+.grid { display: grid; gap: 12px; }
+.card { border: 1px solid var(--line); border-radius: var(--radius-card); padding: 14px 16px; background: var(--surface); }
+.card .name { font-family: var(--font-body), "Hiragino Sans", "Yu Gothic", sans-serif; font-size: 16px; margin: 4px 0; }
+.card .price { font-size: 18px; font-weight: 700; margin: 4px 0; }
+.card .meta { color: var(--sub); font-size: 13px; margin: 2px 0; }
+
+/* ===== 5. シーンカード（components/SceneCards.tsx） ===== */
+.sectionHead { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.sectionTitle { margin: 0; font-weight: 700; font-size: 28px; }
+.sectionNote { font-size: 14px; color: var(--sub); }
+.sceneGrid { margin-top: 28px; display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; }
+.sceneCard { display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-card); overflow: hidden; color: var(--ink); text-decoration: none; }
+a.sceneCard:hover { border-color: var(--accent); }
+.sceneCard.featured { border: 2px solid var(--accent); }
+/* 写真を入れる枠（いまは仮の枠） */
+.sceneImage { position: relative; height: 128px; display: flex; align-items: center; justify-content: center; background: var(--tint); color: var(--accent-dark); font-size: 13px; }
+.sceneCard.featured .sceneImage { background: var(--tint-strong); }
+.sceneTag { position: absolute; top: 10px; left: 10px; padding: 3px 8px; background: var(--accent); color: #fff; font-size: 12px; font-weight: 700; }
+.sceneBody { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px 16px; }
+.sceneName { font-family: var(--font-heading), "Hiragino Mincho ProN", "Yu Mincho", serif; font-weight: 700; font-size: 19px; }
+.sceneLink { font-size: 13px; font-weight: 700; color: var(--accent); }
+.sceneLink.soon { font-weight: 500; color: var(--sub); }

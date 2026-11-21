@@ -47,7 +47,7 @@ jobs:
       # Optional: Add step to run tests here
 
       - name: Zip artifact for deployment
-        run: zip -qr ../release.zip . -x 'venv/*
+        run: zip -qr ../release.zip . -x 'venv/*'
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4

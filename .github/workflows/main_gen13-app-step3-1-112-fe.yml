@@ -19,7 +19,7 @@ jobs:
       contents: read #This is required for actions/checkout
     defaults:
       run:
-        working-directory: frontend
+        working-directory: giftia-frontend
 
     steps:
       - uses: actions/checkout@v4

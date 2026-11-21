@@ -8,7 +8,7 @@ on:
     branches:
       - main
     paths:
-      - 'frontend/**'
+      - 'giftia-frontend/**'
       - '.github/workflows/main_gen13-app-step3-1-112-fe.yml'
   workflow_dispatch:
 

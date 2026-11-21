@@ -6,8 +6,9 @@ name: Build and deploy Python project to Azure Function App - func-gen13-step3-1
 
 on:
   push:
-    branches:
-      - 'main'
+  paths:
+    - 'backend/**'
+    - '.github/workflows/main_func-gen13-step3-112.yml'
   workflow_dispatch:
 
 env:
@@ -19,6 +20,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read #This is required for actions/checkout
+
+    defaults:
+      run:
+        working-directory: backend
 
     steps:
       - name: Checkout repository
@@ -40,7 +45,7 @@ jobs:
       # Optional: Add step to run tests here
 
       - name: Zip artifact for deployment
-        run: zip release.zip ./* -r
+        run: zip -qr ../release.zip . -x 'venv/*
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
@@ -48,7 +53,6 @@ jobs:
           name: python-app
           path: |
             release.zip
-            !venv/
 
   deploy:
     runs-on: ubuntu-latest
@@ -60,18 +64,13 @@ jobs:
         with:
           name: python-app
 
-      - name: Unzip artifact for deployment
-        run: |
-          unzip release.zip
-          rm release.zip
-        
       - name: 'Deploy to Azure Functions'
         uses: Azure/functions-action@v1
         id: deploy-to-function
         with:
           app-name: 'func-gen13-step3-112'
-          slot-name: 'Production'
-          package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+          package: release.zip
+          remote-build: true
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_EED041B31B84407D99F0AA6CA662046F }}
           sku: 'flexconsumption'
         

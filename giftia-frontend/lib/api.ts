@@ -44,3 +44,58 @@ export async function searchGifts(c: SearchCondition): Promise<Gift[]> {
   const data = await res.json();
   return data.results;
 }
+
+// ===== シーン別のおすすめ（点数ランキング）API：送別ギフトの検索画面が使う =====
+
+// 推薦理由（点数の材料。サーバーが組み立てて返す）
+export type Reasons = {
+  conditions: string[];      // 満たしている安心条件の表示名（例：常温保存）
+  sales_rank: number | null; // シーン向けの商品の中での販売数の順位
+  rating: number;            // 評価
+  review_count: number;      // レビュー件数
+  text: string;              // 推薦理由の文章
+};
+
+// おすすめ1件：Gift に、順位・点数・推薦理由が付く
+export type Recommendation = Gift & {
+  rank: number;     // おすすめ順の順位
+  score: number;    // 点数
+  reasons: Reasons; // 推薦理由
+};
+
+// APIの返事
+export type RecommendationResult = {
+  scene: string;
+  totalCandidates: number; // 絞り込みに合った商品の数
+  relaxed: boolean;        // true：年代で0件だったので、年代を外して取り直した
+  results: Recommendation[];
+};
+
+// 絞り込みの条件（空・未指定は「指定なし」）
+export type RecommendationCondition = {
+  ageGroup?: string; // 10代／20代／30代／40代／50代／60代以上
+  priceMin?: number; // 予算の下限（以上）
+  priceMax?: number; // 予算の上限（以下）
+  limit?: number;    // 返す件数
+};
+
+// シーン別のおすすめを、点数の高い順にもらう（sceneCode は "farewell" のみ対応）
+export async function fetchRecommendations(sceneCode: string, c: RecommendationCondition): Promise<RecommendationResult> {
+  const params = new URLSearchParams();
+  if (c.ageGroup) params.set("age_group", c.ageGroup);
+  if (c.priceMin !== undefined) params.set("price_min", String(c.priceMin));
+  if (c.priceMax !== undefined) params.set("price_max", String(c.priceMax));
+  if (c.limit !== undefined) params.set("limit", String(c.limit));
+
+  const res = await fetch(`${API}/api/scenes/${encodeURIComponent(sceneCode)}/recommendations?${params.toString()}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+  // サーバーの項目名（total_candidates）を、画面側の書き方（totalCandidates）に直す
+  const data = await res.json();
+  return {
+    scene: data.scene,
+    totalCandidates: data.total_candidates,
+    relaxed: data.relaxed,
+    results: data.results,
+  };
+}

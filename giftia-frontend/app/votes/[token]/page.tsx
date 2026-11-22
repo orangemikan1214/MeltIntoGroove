@@ -53,6 +53,7 @@ export default function VotePage() {
   if (status === "loading") {
     return (
       <main style={styles.page}>
+        <Header />
         <div style={styles.container}>読み込み中…</div>
       </main>
     );
@@ -62,6 +63,7 @@ export default function VotePage() {
   if (status === "notFound") {
     return (
       <main style={styles.page}>
+        <Header />
         <div style={styles.container}>
           <h1>投票ページが見つかりません</h1>
           <p>この投票ページは存在しないか、URLが間違っています。</p>
@@ -77,6 +79,7 @@ export default function VotePage() {
   if (status === "error" || !vote) {
     return (
       <main style={styles.page}>
+        <Header />
         <div style={styles.container}>
           <h1>読み込めませんでした</h1>
           <p>時間をおいて、もう一度お試しください。</p>
@@ -330,7 +333,7 @@ export default function VotePage() {
         )}
 
         <p style={styles.backLink}>
-          <Link href="/mypage">マイページに戻る</Link>
+          <Link href="/mypage" style={{ color: "var(--accent)" }}>マイページに戻る</Link>
         </p>
       </div>
     </main>
@@ -341,9 +344,8 @@ export default function VotePage() {
 const styles: { [key: string]: React.CSSProperties } = {
   page: {
     minHeight: "100vh",
-    backgroundColor: "#FAF8F5",
-    color: "#1F2328",
-    fontFamily: '"Noto Sans JP", sans-serif',
+    backgroundColor: "var(--bg)",
+    color: "var(--ink)",
   },
   container: {
     maxWidth: "1100px",
@@ -355,7 +357,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     margin: "0 0 4px",
   },
   description: {
-    color: "#5B6168",
+    color: "var(--sub)",
     marginBottom: "20px",
   },
   urlCard: {
@@ -365,9 +367,9 @@ const styles: { [key: string]: React.CSSProperties } = {
     flexWrap: "wrap",
     padding: "16px",
     marginBottom: "24px",
-    backgroundColor: "#FFFFFF",
-    border: "1px solid #E3DED6",
-    borderRadius: "12px",
+    backgroundColor: "var(--surface)",
+    border: "1px solid var(--line)",
+    borderRadius: "var(--radius-card)",
   },
   urlText: {
     flex: "1",
@@ -376,25 +378,25 @@ const styles: { [key: string]: React.CSSProperties } = {
     overflowWrap: "anywhere",
   },
   expiry: {
-    color: "#5B6168",
+    color: "var(--sub)",
     fontSize: "14px",
   },
   message: {
-    color: "#BE185D",
+    color: "var(--accent)",
     fontWeight: "bold",
   },
   expiredMessage: {
-    backgroundColor: "#F1EEE9",
+    backgroundColor: "var(--tint-soft)",
     padding: "16px",
-    borderRadius: "8px",
+    borderRadius: "var(--radius-control)",
     marginBottom: "20px",
-    color: "#4A5057",
+    color: "var(--sub)",
   },
   tableWrapper: {
     overflowX: "auto",
-    backgroundColor: "#FFFFFF",
-    border: "1px solid #E3DED6",
-    borderRadius: "8px",
+    backgroundColor: "var(--surface)",
+    border: "1px solid var(--line)",
+    borderRadius: "var(--radius-control)",
   },
   table: {
     borderCollapse: "collapse",
@@ -404,36 +406,36 @@ const styles: { [key: string]: React.CSSProperties } = {
   headerCell: {
     textAlign: "left",
     padding: "12px",
-    borderBottom: "1px solid #E3DED6",
+    borderBottom: "1px solid var(--line)",
     minWidth: "160px",
     verticalAlign: "top",
   },
   productDescription: {
     fontSize: "12px",
     fontWeight: "normal",
-    color: "#5B6168",
+    color: "var(--sub)",
     marginTop: "6px",
   },
   cell: {
     padding: "12px",
-    borderTop: "1px solid #E3DED6",
+    borderTop: "1px solid var(--line)",
     verticalAlign: "middle",
   },
   myRow: {
-    backgroundColor: "#FFF1F7",
+    backgroundColor: "var(--tint-soft)",
   },
   nicknameLabel: {
     display: "block",
     fontSize: "12px",
-    color: "#5B6168",
+    color: "var(--sub)",
     marginBottom: "6px",
   },
   nicknameInput: {
     width: "100%",
     minHeight: "40px",
     padding: "0 8px",
-    border: "1px solid #B9B2A7",
-    borderRadius: "8px",
+    border: "1px solid var(--line-strong)",
+    borderRadius: "var(--radius-control)",
     boxSizing: "border-box",
   },
   answerButtons: {
@@ -443,27 +445,27 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   answerButton: {
     padding: "8px 10px",
-    backgroundColor: "#FFFFFF",
-    border: "1px solid #B9B2A7",
-    borderRadius: "8px",
+    backgroundColor: "var(--surface)",
+    border: "1px solid var(--line-strong)",
+    borderRadius: "var(--radius-control)",
     cursor: "pointer",
     whiteSpace: "nowrap",
   },
   selectedGood: {
-    backgroundColor: "#BE185D",
+    backgroundColor: "var(--accent)",
     color: "#FFFFFF",
-    borderColor: "#BE185D",
+    borderColor: "var(--accent)",
   },
   selectedBad: {
-    backgroundColor: "#4A5057",
+    backgroundColor: "var(--sub)",
     color: "#FFFFFF",
-    borderColor: "#4A5057",
+    borderColor: "var(--sub)",
   },
   totalCell: {
     padding: "12px",
-    borderTop: "2px solid #1F2328",
+    borderTop: "2px solid var(--ink)",
     fontWeight: "bold",
-    backgroundColor: "#FFF1F7",
+    backgroundColor: "var(--tint-soft)",
     whiteSpace: "nowrap",
   },
   submitArea: {
@@ -479,8 +481,8 @@ const styles: { [key: string]: React.CSSProperties } = {
     justifyContent: "center",
     padding: "12px 24px",
     border: "none",
-    borderRadius: "8px",
-    backgroundColor: "#BE185D",
+    borderRadius: "var(--radius-control)",
+    backgroundColor: "var(--accent)",
     color: "#FFFFFF",
     fontWeight: "bold",
     fontSize: "15px",
@@ -489,16 +491,16 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   secondaryButton: {
     padding: "10px 16px",
-    border: "1px solid #B9B2A7",
-    borderRadius: "8px",
-    backgroundColor: "#FFFFFF",
-    color: "#1F2328",
+    border: "1px solid var(--line-strong)",
+    borderRadius: "var(--radius-control)",
+    backgroundColor: "var(--surface)",
+    color: "var(--ink)",
     cursor: "pointer",
     textDecoration: "none",
     fontSize: "14px",
   },
   note: {
-    color: "#5B6168",
+    color: "var(--sub)",
     fontSize: "13px",
   },
   backLink: {

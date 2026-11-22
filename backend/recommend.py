@@ -3,7 +3,7 @@
 # 要件定義書 FR-02・6章 に対応する。
 #   GET /api/scenes/{scene_code}/recommendations
 #   ① 送別向け（product_scenes）・在庫あり・予算・年代 で候補を絞る
-#   ② 点数 ＝ 0.4×売れ筋 ＋ 0.2×評価 ＋ 0.4×安心条件 を計算する
+#   ② 点数 ＝ 0.4×売れ筋 ＋ 0.2×評価 ＋ 0.05×満たした安心条件の数 を計算する
 #   ③ 点数の高い順に並べ、推薦理由をつけて返す
 # LLM は使わない。同じ入力なら、いつでも同じ順位・同じ理由になる。
 
@@ -30,7 +30,7 @@ AGE_FACTS = {
     "60代以上": "age_over60s",
 }
 
-# 「外さない」安心条件（7つ）。(fact 名, 画面に出す名前)
+# 「外さない」安心条件（いまは7つ。持ち運びしやすさを足して8つにする予定）。(fact 名, 画面に出す名前)
 CONDITIONS = [
     ("room_temp", "常温保存"),
     ("shelf_life_days", "日持ち"),
@@ -43,10 +43,10 @@ CONDITIONS = [
 
 SHELF_LIFE_MIN_DAYS = 14  # 日持ち：この日数以上なら満たす
 
-# 点数の重み（合計 1.0）
+# 点数の重み
 W_SALES = 0.4   # 売れ筋
 W_RATING = 0.2  # 評価
-W_SAFE = 0.4    # 安心条件
+SAFE_POINT = 0.05  # 安心条件：1つ満たすごとの加点（0.4÷8。7つ全部満たすと 0.35）
 
 REVIEW_COUNT_CAP = 50  # レビュー件数がこの数に届かない高評価は割り引く
 
@@ -204,8 +204,8 @@ def rank_candidates(candidates: list[dict], facts: dict, office_median: float | 
         # 売れ筋：候補の中で最小を0、最大を1に換算（全員同じなら0）
         sales_score = ((r["sales_count"] or 0) - lo) / (hi - lo) if hi > lo else 0.0
         met = met_conditions(facts.get(r["product_id"], {}), office_median)
-        safe_score = len(met) / len(CONDITIONS)
-        score = W_SALES * sales_score + W_RATING * rating_score(r["rating"], r["review_count"]) + W_SAFE * safe_score
+        safe_score = len(met) * SAFE_POINT  # 満たした数 × 0.05
+        score = W_SALES * sales_score + W_RATING * rating_score(r["rating"], r["review_count"]) + safe_score
         items.append({"row": r, "score": round(score, 4), "conditions": met})
 
     # 点数の高い順 → 同点なら販売数が多い順 → それも同じなら product_id が小さい順

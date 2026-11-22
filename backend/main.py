@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 import secrets
 import uuid
 from typing import Literal
-from database import fetch_all, create_vote, get_vote, get_vote_for_response, save_ballots, list_votes
+from database import fetch_all, create_vote, get_vote, get_vote_for_response, save_ballots, list_votes, find_scene_product_ids
 from recommend import router as recommend_router  # シーン別の検索（FR-02）
 
 load_dotenv()  # .env を読む（DB の接続情報・CORS の許可）
@@ -119,26 +119,26 @@ def post_vote(body: VoteCreate):
         raise HTTPException(status_code=422, detail="同じ商品は2回選べません")
 
     # 2. 送別向けの商品だけか、MySQLで確かめる
-    placeholders = ",".join(["%s"] * len(ids))   # 商品が3個なら「%s,%s,%s」
-    rows = fetch_all(
-        f"SELECT product_id FROM product_scenes WHERE scene_tag = %s AND product_id IN ({placeholders})",
-        (scene_tag, *ids),
-    )
-    if {row["product_id"] for row in rows} != set(ids):
+    if find_scene_product_ids(scene_tag, ids) != set(ids):
         raise HTTPException(status_code=422, detail="送別向けではない商品が含まれています")
 
-    # 3. 保存する（token は推測されにくい16文字）
+    # 3. 保存する（token は推測されにくい16文字）。期限も一緒に受け取る
     token = secrets.token_urlsafe(12)
-    vote_id = create_vote(token, body.scene_code, CURRENT_USER_ID, ids)
+    created = create_vote(token, body.scene_code, CURRENT_USER_ID, ids)
 
-    # 4. 期限を取り出して返す
-    saved = fetch_all("SELECT expires_at FROM votes WHERE vote_id = %s", (vote_id,))
-    return {"token": token, "url_path": f"/votes/{token}", "expires_at": saved[0]["expires_at"]}
+    # 4. 返す
+    return {"token": token, "url_path": f"/votes/{token}", "expires_at": created["expires_at"]}
 
 @app.get("/api/votes/{token}")
-def get_vote_detail(token: str):
-    """投票内容の取得（期限切れでも結果は見られる）"""
-    vote = get_vote(token)
+def get_vote_detail(token: str, voter_key: str | None = None):
+    """投票内容の取得（期限切れでも結果は見られる）voter_key を付けると、自分の回答に is_me が付く"""
+    key = None
+    if voter_key:
+        try:
+            key = str(uuid.UUID(voter_key))
+        except ValueError:
+            key = None  # voter_key が正しい UUID でなければ無視する
+    vote = get_vote(token, key)
     if vote is None:
         raise HTTPException(status_code=404, detail="この投票ページは見つかりません")
     return vote
@@ -178,7 +178,7 @@ def post_vote_response(token: str, body: ResponseIn):
     # 4. 保存して、最新の投票内容を返す
     answers = {answer.product_id: answer.value for answer in body.answers}
     save_ballots(vote["vote_id"], voter_key, body.nickname.strip(), answers)
-    return get_vote(token)
+    return get_vote(token, voter_key)  # 保存後の最新の投票内容を返す（自分の回答に is_me が付く）
 
 @app.get("/api/votes")
 def get_my_votes():

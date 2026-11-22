@@ -12,6 +12,7 @@ import os
 from contextlib import contextmanager 
 import pymysql
 from dotenv import load_dotenv
+from dbutils.pooled_db import PooledDB
 
 load_dotenv()  # 同じフォルダの .env を読み、os.environ に入れる
 
@@ -51,10 +52,36 @@ def fetch_all(query: str, params: tuple = ()) -> list[dict]:
         conn.close()
 
 # ===== 投票機能（ここから） =====
+_pool = None
+
+def get_pooled_connection():
+    """使い回す接続を1つ借りる。close() すると、閉じずにプールへ返る。"""
+    global _pool
+    if _pool is None:
+        _pool = PooledDB(
+            creator=get_connection,  # 新しい接続が要るときは、これまでの get_connection を使う
+            maxconnections=10,       # 同時に使える最大数
+            mincached=2,             # 最初に用意しておく数
+            maxcached=5,             # 余らせておく最大数
+            blocking=True,           # 全部使用中なら、空くまで待つ
+            ping=1,                  # 借りるとき、生きているか確認（切れていたら繋ぎ直す）
+        )
+    return _pool.connection()
+
+@contextmanager
+def read_cursor():
+    """読み取り用。1回の接続で、続けて何回でも SELECT できる（接続が1回で済む）"""
+    conn = get_pooled_connection()
+    try:
+        with conn.cursor() as cur:
+            yield cur
+    finally:
+        conn.close()
+        
 @contextmanager
 def transaction():
     """書き込み用。with の中が全部成功したら commit、途中で失敗したら rollback（全部なかったことに）する"""
-    conn = get_connection()
+    conn = get_pooled_connection()
     try:
         with conn.cursor() as cur:
             yield cur
@@ -65,8 +92,18 @@ def transaction():
     finally:
         conn.close()
 
-def create_vote(token: str, scene_code: str, user_id: str, product_ids: list[str], days: int = 14) -> int:
-    """投票ページを作る（votes に1行、vote_items に候補の行）。作った vote_id を返す。
+def find_scene_product_ids(scene_tag: str, product_ids: list[str]) -> set[str]:
+    """product_ids のうち、そのシーン向けの商品のIDを返す（接続は使い回す）"""
+    placeholders = ",".join(["%s"] * len(product_ids))
+    with read_cursor() as cur:
+        cur.execute(
+            f"SELECT product_id FROM product_scenes WHERE scene_tag = %s AND product_id IN ({placeholders})",
+            (scene_tag, *product_ids),
+        )
+        return {row["product_id"] for row in cur.fetchall()}
+
+def create_vote(token: str, scene_code: str, user_id: str, product_ids: list[str], days: int = 14) -> dict:
+    """投票ページを作る（votes に1行、vote_items に候補の行）。vote_id と expires_at を返す。
     途中で失敗したら、votes の行も取り消される。"""
     with transaction() as cur:
         cur.execute(
@@ -79,35 +116,41 @@ def create_vote(token: str, scene_code: str, user_id: str, product_ids: list[str
             "INSERT INTO vote_items (vote_id, product_id, sort_order) VALUES (%s, %s, %s)",
             [(vote_id, product_id, order) for order, product_id in enumerate(product_ids, start=1)],
         )
-    return vote_id
+        cur.execute("SELECT expires_at FROM votes WHERE vote_id = %s", (vote_id,))
+        expires_at = cur.fetchone()["expires_at"]
+    return {"vote_id": vote_id, "expires_at": expires_at}
 
-def get_vote(token: str) -> dict | None:
+def get_vote(token: str, voter_key: str | None = None) -> dict | None:
     """token の投票ページを返す。なければ None。
     候補（商品）、賛成・反対の数、投票者ごとの回答、期限切れかどうかを入れる。"""
 
-    # 1. 投票ページ本体（期限切れかどうかは、MySQLの NOW() と比べて決める）
-    votes = fetch_all(
-        "SELECT vote_id, token, expires_at, (expires_at <= NOW()) AS expired FROM votes WHERE token = %s",
-        (token,),
-    )
-    if not votes:
-        return None
-    vote = votes[0]
+    # 1〜3 を、1回の接続でまとめて取る
+    with read_cursor() as cur:
+        # 1. 投票ページ本体（期限切れかどうかは、MySQLの NOW() と比べて決める）
+        cur.execute(
+            "SELECT vote_id, token, expires_at, (expires_at <= NOW()) AS expired FROM votes WHERE token = %s",
+            (token,),
+        )
+        votes = cur.fetchall()
+        if not votes:
+            return None
+        vote = votes[0]
 
-    # 2. 候補の商品（名前や価格は products から持ってくる）
-    items = fetch_all(
-        "SELECT vi.product_id, p.product_name, p.brand, p.price, p.rating, p.review_count "
-        "FROM vote_items vi LEFT JOIN products p ON p.product_id = vi.product_id "
-        "WHERE vi.vote_id = %s ORDER BY vi.sort_order",
-        (vote["vote_id"],),
-    )
+        # 2. 候補の商品（名前や価格は products から持ってくる）
+        cur.execute(
+            "SELECT vi.product_id, p.product_name, p.brand, p.price, p.rating, p.review_count "
+            "FROM vote_items vi LEFT JOIN products p ON p.product_id = vi.product_id "
+            "WHERE vi.vote_id = %s ORDER BY vi.sort_order",
+            (vote["vote_id"],),
+        )
+        items = cur.fetchall()
 
-    # 3. これまでの投票（1票=1行）
-    ballots = fetch_all(
-        "SELECT voter_key, nickname, product_id, value FROM vote_ballots WHERE vote_id = %s ORDER BY ballot_id",
-        (vote["vote_id"],),
-    )
-
+        # 3. これまでの投票（1票=1行）
+        cur.execute(
+            "SELECT voter_key, nickname, product_id, value FROM vote_ballots WHERE vote_id = %s ORDER BY ballot_id",
+            (vote["vote_id"],),
+        )
+        ballots = cur.fetchall()
     # 4. 商品ごとの賛成・反対の数を数える
     for item in items:
         item["good_count"] = sum(1 for b in ballots if b["product_id"] == item["product_id"] and b["value"] == "good")
@@ -116,7 +159,7 @@ def get_vote(token: str) -> dict | None:
     # 5. 投票者ごとにまとめる（voter_key は他の人に見せないので、返す内容には入れない）
     voters = {}
     for b in ballots:
-        voter = voters.setdefault(b["voter_key"], {"nickname": b["nickname"] or "", "answers": {}})
+        voter = voters.setdefault(b["voter_key"], {"nickname": b["nickname"] or "", "answers": {}, "is_me": b["voter_key"] == voter_key},)
         voter["answers"][b["product_id"]] = b["value"]
 
     return {
@@ -129,14 +172,17 @@ def get_vote(token: str) -> dict | None:
 
 def get_vote_for_response(token: str) -> dict | None:
     """投票を受け付けてよいかの判断に使う情報（期限切れか、候補の商品IDは何か）。なければ None"""
-    votes = fetch_all(
-        "SELECT vote_id, (expires_at <= NOW()) AS expired FROM votes WHERE token = %s",
-        (token,),
-    )
-    if not votes:
-        return None
-    vote = votes[0]
-    items = fetch_all("SELECT product_id FROM vote_items WHERE vote_id = %s", (vote["vote_id"],))
+    with read_cursor() as cur:
+        cur.execute(
+            "SELECT vote_id, (expires_at <= NOW()) AS expired FROM votes WHERE token = %s",
+            (token,),
+        )
+        votes = cur.fetchall()
+        if not votes:
+            return None
+        vote = votes[0]
+        cur.execute("SELECT product_id FROM vote_items WHERE vote_id = %s", (vote["vote_id"],))
+        items = cur.fetchall()
     return {
         "vote_id": vote["vote_id"],
         "expired": bool(vote["expired"]),
@@ -157,28 +203,31 @@ def save_ballots(vote_id: int, voter_key: str, nickname: str, answers: dict[str,
 def list_votes(user_id: str) -> list[dict]:
     """user_id が作った投票ページの一覧（新しい順）。期限切れも含める"""
 
-    # 1. 投票ページの一覧（回答した人数は、サブクエリで数える）
-    votes = fetch_all(
-        "SELECT v.vote_id, v.token, v.created_at, v.expires_at, "
-        "(v.expires_at <= NOW()) AS expired, "
-        "(SELECT COUNT(DISTINCT b.voter_key) FROM vote_ballots b WHERE b.vote_id = v.vote_id) AS voter_count "
-        "FROM votes v WHERE v.user_id = %s "
-        "ORDER BY v.created_at DESC, v.vote_id DESC",
-        (user_id,),
-    )
-    if not votes:
-        return []
+    with read_cursor() as cur:
+        # 1. 投票ページの一覧（回答した人数は、サブクエリで数える）
+        cur.execute(
+            "SELECT v.vote_id, v.token, v.created_at, v.expires_at, "
+            "(v.expires_at <= NOW()) AS expired, "
+            "(SELECT COUNT(DISTINCT b.voter_key) FROM vote_ballots b WHERE b.vote_id = v.vote_id) AS voter_count "
+            "FROM votes v WHERE v.user_id = %s "
+            "ORDER BY v.created_at DESC, v.vote_id DESC",
+            (user_id,),
+        )
+        votes = cur.fetchall()
+        if not votes:
+            return []
 
-    # 2. 全部の投票ページの候補を、まとめて1回で取る
-    ids = [v["vote_id"] for v in votes]
-    placeholders = ",".join(["%s"] * len(ids))
-    items = fetch_all(
-        "SELECT vi.vote_id, vi.product_id, p.product_name "
-        "FROM vote_items vi LEFT JOIN products p ON p.product_id = vi.product_id "
-        f"WHERE vi.vote_id IN ({placeholders}) "
-        "ORDER BY vi.vote_id, vi.sort_order",
-        tuple(ids),
-    )
+        # 2. 全部の投票ページの候補を、まとめて1回で取る
+        ids = [v["vote_id"] for v in votes]
+        placeholders = ",".join(["%s"] * len(ids))
+        cur.execute(
+            "SELECT vi.vote_id, vi.product_id, p.product_name "
+            "FROM vote_items vi LEFT JOIN products p ON p.product_id = vi.product_id "
+            f"WHERE vi.vote_id IN ({placeholders}) "
+            "ORDER BY vi.vote_id, vi.sort_order",
+            tuple(ids),
+        )
+        items = cur.fetchall()
 
     # 3. 候補を、投票ページごとにまとめる
     by_vote = {}

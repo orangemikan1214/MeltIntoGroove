@@ -65,7 +65,7 @@ export type VoteItem = VoteProduct & { good_count: number; bad_count: number };
 export type VoteAnswerValue = "good" | "bad";
 
 // 投票した人1人ぶん（nickname が空なら、画面で「名無し」と表示する）
-export type VoteVoter = { nickname: string; answers: Record<string, VoteAnswerValue> };
+export type VoteVoter = { nickname: string; answers: Record<string, VoteAnswerValue>; is_me: boolean };
 
 // 投票ページの中身
 export type VoteDetail = {
@@ -88,8 +88,9 @@ export function createVote(productIds: string[], sceneCode = "farewell"): Promis
 }
 
 // 投票ページの中身を取る
-export function fetchVote(token: string): Promise<VoteDetail> {
-  return request<VoteDetail>(`/api/votes/${encodeURIComponent(token)}`);
+export function fetchVote(token: string, voterKey?: string): Promise<VoteDetail> {
+  const query = voterKey ? `?voter_key=${encodeURIComponent(voterKey)}` : "";
+  return request<VoteDetail>(`/api/votes/${encodeURIComponent(token)}${query}`);
 }
 
 // 投票を保存する（全候補ぶんをまとめて送る。同じ voterKey で送り直すと上書き）

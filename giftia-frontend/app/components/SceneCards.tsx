@@ -15,11 +15,11 @@ type Scene = {
 const scenes: Scene[] = [
   { name: "誕生日", image: "/images/birthday.jpeg"  },
   { name: "送別", href: "/scenes/farewell", tag: "外さない10選", image: "/images/farewell.jpeg" },
-  { name: "お礼"},//, image: "/images/thankyou.jpeg" },
+  { name: "お礼", image: "/images/present.jpeg" },
   { name: "母の日", image: "/images/mothersday.jpeg" },
   { name: "お歳暮", image: "/images/endofyear.jpeg" },
   { name: "お中元", image: "/images/ochugen.jpeg" },
-  { name: "結婚祝い"}, //, image: "/images/wedding.jpeg" },
+  { name: "結婚祝い", image: "/images/wedding.jpeg" },
   { name: "父の日", image: "/images/fathersday.jpeg" },
   { name: "出産祝い", image: "/images/baby-birth.jpeg" },
 ];

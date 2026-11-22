@@ -26,6 +26,9 @@ export default function VotePage() {
 
     // 送信中かどうか（二重に押されないようにする）
   const [submitting, setSubmitting] = useState(false);
+  
+  //自分の回答を修正中かどうか
+  const [editing, setEditing] = useState(false);
 
   // 共有URL（window はブラウザでしか使えないので、useEffect の中で取る）
   const [shareUrl, setShareUrl] = useState("");
@@ -37,7 +40,7 @@ export default function VotePage() {
   useEffect(() => {
     const load = async () => {
       try {
-        setVote(await fetchVote(token));
+        setVote(await fetchVote(token, getVoterKey()));
         setStatus("ready");
       } catch (error) {
         setStatus(error instanceof ApiError && error.status === 404 ? "notFound" : "error");
@@ -96,6 +99,25 @@ export default function VotePage() {
     }));
   };
 
+    // 自分の回答を、入力欄に戻して修正を始める
+  const startEdit = (voter: { nickname: string; answers: Record<string, VoteAnswerValue> }) => {
+    setNickname(voter.nickname);
+    setMyAnswers(voter.answers);
+    setMessage("");
+    setEditing(true);
+  };
+
+  // 修正をやめる
+  const cancelEdit = () => {
+    setEditing(false);
+    setNickname("");
+    setMyAnswers({});
+  };
+
+  // 自分の回答があるか／入力欄を出すか
+  const hasAnswered = vote.voters.some((voter) => voter.is_me);
+  const showAnswerRow = !isExpired && (!hasAnswered || editing);
+
   // 投票を送信する
   const submitVote = async () => {
     // すべての商品に回答しているか確認
@@ -113,6 +135,7 @@ export default function VotePage() {
         answers: myAnswers,
       });
       setVote(updated); // 表を、最新の結果に入れ替える
+      setEditing(false);
       setMyAnswers({});
       setNickname("");
       setMessage("回答を受け付けました！");
@@ -197,20 +220,31 @@ export default function VotePage() {
 
             <tbody>
               {/* 既存の投票者 */}
-              {vote.voters.map((voter, index) => (
-                <tr key={index}>
-                  <td style={styles.cell}>{voter.nickname || "名無し"}</td>
-
-                  {vote.items.map((item) => (
-                    <td key={item.product_id} style={styles.cell}>
-                      {voter.answers[item.product_id] === "good" ? "○ 賛成" : "× 反対"}
+              {vote.voters.map((voter, index) => {
+                // 修正中は、自分の行を隠す（下の入力欄が代わりになる）
+                if (voter.is_me && editing) return null;
+                return (
+                  <tr key={index}>
+                    <td style={styles.cell}>
+                      {voter.nickname || "名無し"}
+                      {voter.is_me && !isExpired && (
+                        <button type="button" onClick={() => startEdit(voter)} style={{ ...styles.secondaryButton, marginLeft: "8px", padding: "4px 12px" }}>
+                          修正
+                        </button>
+                      )}
                     </td>
-                  ))}
-                </tr>
-              ))}
+
+                    {vote.items.map((item) => (
+                      <td key={item.product_id} style={styles.cell}>
+                        {voter.answers[item.product_id] === "good" ? "○ 賛成" : "× 反対"}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })}
 
               {/* 自分の回答欄 */}
-              {!isExpired && (
+              {showAnswerRow && (
                 <tr style={styles.myRow}>
                   <td style={styles.cell}>
                     <label>
@@ -274,14 +308,25 @@ export default function VotePage() {
         </div>
 
         {/* 回答ボタン */}
-        {!isExpired && (
+        {showAnswerRow && (
           <div style={styles.submitArea}>
             <button type="button" onClick={submitVote} disabled={submitting} style={styles.primaryButton}>
-              {submitting ? "送信中…" : "回答する"}
+              {submitting ? "送信中…" : editing ? "回答を修正する" : "回答する"}
             </button>
 
-            <span style={styles.note}>同じブラウザなら、あとから書き直せます。</span>
+            {editing && (
+              <button type="button" onClick={cancelEdit} disabled={submitting} style={styles.secondaryButton}>
+                キャンセル
+              </button>
+            )}
+
+            <span style={styles.note}>同じブラウザなら、あとから修正できます。</span>
           </div>
+        )}
+
+        {/* 回答済みの案内 */}
+        {hasAnswered && !editing && !isExpired && (
+          <p style={styles.note}>回答済みです。自分の名前の横の「修正」から、書き直せます。</p>
         )}
 
         <p style={styles.backLink}>

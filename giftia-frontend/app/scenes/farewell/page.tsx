@@ -20,14 +20,16 @@ type FeaturedItem = {
 };
 
 const featuredItems: FeaturedItem[] = [
-  { id: "G0027", name: "Cacao no Mori ショコラアソート 12粒入", price: 2300, rating: 4.7, reviewCount: 31, comment: "評価の高いショコラのアソート。甘いものが好きな方にも、そうでない方にも選びやすい定番です。" },
-  { id: "G0007", name: "喫茶と焙煎 さざなみ ドリップバッグ 20袋アソート", price: 3180, rating: 4.0, reviewCount: 39, comment: "20袋入りなので、職場のみなさんで分けて飲めます。レビュー件数も多く安心です。" },
+  { id: "G0027", name: "Cacao no Mori ショコラアソート 12粒入", price: 2300, rating: 4.7, reviewCount: 31, comment: "評価の高いショコラのアソート。12粒入りで、ひとりでゆっくり楽しめる量です。" },
+  { id: "G0064", name: "焼き菓子とお茶 いろは 焼き菓子ギフト「ひととき」12個入", price: 2700, rating: 4.7, reviewCount: 3, comment: "評価の高い焼き菓子の詰め合わせ。12個入りで、ほどよい量のお菓子です。" },
   { id: "G0019", name: "せんべい 大川屋 おかきの詰め合わせ「梅」", price: 3600, rating: 4.5, reviewCount: 11, comment: "洋菓子が苦手な方にも渡せる和のお菓子。世代を問わず喜ばれます。" },
+  { id: "G0007", name: "喫茶と焙煎 さざなみ ドリップバッグ 20袋アソート", price: 3180, rating: 4.0, reviewCount: 39, comment: "20袋入りで、毎日の一杯を少しずつ楽しめます。レビュー件数が多く、安心です。" },
   { id: "G0001", name: "Lino 国産タオルギフトセット", price: 4400, rating: 4.4, reviewCount: 13, comment: "国産タオルのセット。毎日使えて、好みが分かれにくい実用品です。" },
   { id: "G0026", name: "織物工場 いまばり舎 今治ハンドタオル 2枚セット", price: 1280, rating: 4.4, reviewCount: 10, comment: "予算を抑えたいときに。今治タオルを気軽に贈れます。" },
   { id: "G0034", name: "Petal Room Mio お花とお菓子のセット（焼き菓子）", price: 3700, rating: 4.4, reviewCount: 12, comment: "お花とお菓子がセットになった、華やかな送別向けのギフトです。" },
-  { id: "G0076", name: "ショコラ工房 ユキ ショコラアソート 16粒入", price: 3580, rating: 4.4, reviewCount: 13, comment: "16粒入りで、部署のみんなに配りやすいボリュームです。" },
-  { id: "G0139", name: "焼菓子舗 こむぎの丘 焼き菓子ギフト「ひととき」20個入", price: 3800, rating: 4.2, reviewCount: 9, comment: "20個入りの焼き菓子。人数が多い職場にも対応できます。" },
+  { id: "G0062", name: "Stainless Lab Hibi 保温ボトル 500ml（ブラック）", price: 3100, rating: 4.5, reviewCount: 2, comment: "500mlの保温ボトル。新しい職場や出先でも使いやすい、実用的な贈り物です。" },
+  { id: "G0200", name: "花屋 はなのわ フラワーボックス「パープル系」", price: 5000, rating: 4.2, reviewCount: 50, comment: "レビュー50件と、リストで一番多い人気のフラワーボックス。気持ちが伝わる定番の贈り物です。" },
+  { id: "G0133", name: "万年筆とペン ふみ 金属軸ボールペン（ブラック）", price: 4500, rating: 4.0, reviewCount: 5, comment: "仕事で使える、金属軸のボールペン。次の場所でも使ってもらえる、実用的な1本です。" },
 ];
 
 export default function FarewellPage() {
@@ -98,7 +100,7 @@ export default function FarewellPage() {
             onClick={() => setTab("search")}
             style={tab === "search" ? styles.tabActive : styles.tab}
           >
-            検索画面
+            予算・年代から探す
           </button>
         </div>
 
@@ -148,7 +150,7 @@ export default function FarewellPage() {
                 <li>下のおすすめから、気になる商品を2〜5個選びます。</li>
                 <li>「投票ページを作る」を押します。</li>
                 <li>できたページのURLを、一緒に贈る仲間に送ります。</li>
-                <li>みんなの「いいね」を見て、贈るものを決めましょう。</li>
+                <li>投票結果を見て、贈るものを決めましょう。</li>
               </ol>
             </div>
 
@@ -184,7 +186,21 @@ export default function FarewellPage() {
                     </div>
                     </article>
                 ))}
-                </div>
+              </div>
+            {/* 検索タブへの案内 */}
+            <div style={styles.moreArea}>
+              <p style={styles.meta}>予算や相手の年代に合わせて、ほかの商品も探せます！</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setTab("search");
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                style={styles.moreButton}
+              >
+                他のギフトを探してみる
+              </button>
+            </div>
           </section>
         )}
 
@@ -248,11 +264,12 @@ const styles: { [key: string]: React.CSSProperties } = {
   tab: {
     minHeight: "44px",
     padding: "0 20px",
-    border: "1px solid transparent",
-    borderRadius: 0,
-    backgroundColor: "transparent",
-    color: "var(--ink)",
+    border: "1px solid #F9A8D4",
+    borderRadius: "0",
+    backgroundColor: "#FCE7F3",
+    color: "#831843",
     fontSize: "15px",
+    fontWeight: "bold",
     cursor: "pointer",
   },
   tabActive: {
@@ -410,5 +427,23 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: "var(--accent)",
     fontWeight: "bold",
     fontSize: "14px",
+  },
+    moreArea: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: "2px",
+    marginTop: "5px",
+  },
+  moreButton: {
+    minHeight: "48px",
+    padding: "0 28px",
+    border: "2px solid #BE185D",
+    borderRadius: "8px",
+    backgroundColor: "#FFFFFF",
+    color: "#BE185D",
+    fontSize: "15px",
+    fontWeight: "bold",
+    cursor: "pointer",
   },
 };

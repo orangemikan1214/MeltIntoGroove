@@ -17,7 +17,7 @@ export default function VotePage() {
   const [vote, setVote] = useState<VoteDetail | null>(null);
   const [status, setStatus] = useState<LoadState>("loading");
 
-  // ニックネーム／商品ごとの自分の回答
+  // ニックネーム／商品ごとの自分の回答（送信は Step 11 でつなぐ）
   const [nickname, setNickname] = useState("");
   const [myAnswers, setMyAnswers] = useState<Record<string, VoteAnswerValue>>({});
 
@@ -219,15 +219,8 @@ export default function VotePage() {
                   </th>
                 ))}
               </tr>
-              <tr>
-                <th style={styles.rowHeader}>おすすめの理由</th>
-                {vote.items.map((item) => (
-                  <td key={item.product_id} style={styles.reasonCell}>
-                  {item.reasons?.text ?? "—"}
-                  </td>
-              ))}
-              </tr>
             </thead>
+
             <tbody>
               {/* 既存の投票者 */}
               {vote.voters.map((voter, index) => {
@@ -512,22 +505,5 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   backLink: {
     marginTop: "32px",
-  },
-  rowHeader: {
-    textAlign: "left",
-    padding: "12px",
-    fontSize: "12px",
-    color: "var(--sub)",
-    verticalAlign: "top",
-    borderBottom: "1px solid var(--line)",
-  },
-  reasonCell: {
-    padding: "12px",
-    fontSize: "12px",
-    lineHeight: 1.6,
-    color: "var(--sub)",
-    textAlign: "left",
-    verticalAlign: "top",
-    borderBottom: "1px solid var(--line)",
   },
 };

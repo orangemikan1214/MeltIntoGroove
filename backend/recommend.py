@@ -12,7 +12,6 @@ from statistics import median
 from fastapi import APIRouter, HTTPException, Query
 
 from database import fetch_all
-import time
 
 router = APIRouter()
 
@@ -248,46 +247,3 @@ def to_result(item: dict, rank: int, sales_rank: dict, scene_tag: str) -> dict:
             "text": reason_text(item["conditions"], rank_in_scene, scene_tag, r["rating"], r["review_count"]),
         },
     }
-
-# ── 投票ページ用：商品IDから、推薦理由だけを計算する ─────────────
-
-# シーン全体の情報を、一定時間だけ覚えておく（毎回DBに聞かない）
-SCENE_CACHE_SECONDS = 600  # 10分
-_scene_cache: dict = {}
-
-
-def get_scene_data(scene_tag: str):
-    """(販売順位, 安心条件, 職場注文の中央値) を返す。10分間は、覚えているものを使う"""
-    now = time.time()
-    hit = _scene_cache.get(scene_tag)
-    if hit and now - hit[0] < SCENE_CACHE_SECONDS:
-        return hit[1], hit[2], hit[3]
-    sales_rank = fetch_sales_rank(scene_tag)
-    facts = fetch_facts(scene_tag)
-    office_median = median_office_orders(facts, sales_rank)
-    _scene_cache[scene_tag] = (now, sales_rank, facts, office_median)
-    return sales_rank, facts, office_median
-
-def reasons_for_products(scene_tag: str, product_ids: list[str]) -> dict[str, dict]:
-    """{product_id: reasons} を返す。to_result() の reasons と同じ形"""
-    if not product_ids:
-        return {}
-    marks = ", ".join(["%s"] * len(product_ids))
-    rows = fetch_all(
-        f"SELECT product_id, rating, review_count FROM products WHERE product_id IN ({marks})",
-        tuple(product_ids),
-    )
-    sales_rank, facts, office_median = get_scene_data(scene_tag)
-    result = {}
-    for r in rows:
-        pid = r["product_id"]
-        conditions = met_conditions(facts.get(pid, {}), office_median)
-        rank_in_scene = sales_rank.get(pid)
-        result[pid] = {
-            "conditions": conditions,
-            "sales_rank": rank_in_scene,
-            "rating": float(r["rating"]) if r["rating"] is not None else 0,
-            "review_count": r["review_count"],
-            "text": reason_text(conditions, rank_in_scene, scene_tag, r["rating"], r["review_count"]),
-        }
-    return result

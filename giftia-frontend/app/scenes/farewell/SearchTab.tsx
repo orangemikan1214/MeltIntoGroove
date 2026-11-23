@@ -14,8 +14,10 @@ export type SearchTabProps = {
 const SCENE_CODE = "farewell"; // おすすめAPIのシーン
 const PAGE_SIZE = 20;          // 1ページの件数
 
-// 予算スライダーの範囲（円）。下限は0＝指定なし、上限は最大値＝指定なし
-const PRICE_MAX = 30000;
+// 予算スライダー（1本のバーの両端を動かして、下限と上限を選ぶ）
+//   範囲は 0〜15,000円、1,000円刻み
+//   下限が0円のときは「下限なし」、上限が15,000円のときは「上限なし」（15,000円を超える商品も入る）
+const PRICE_MAX = 15000;
 const PRICE_STEP = 1000;
 
 // 相手の年代の選択肢（API の age_group と同じ表記）
@@ -31,8 +33,8 @@ const pagerStyle: React.CSSProperties = {
 };
 
 export default function SearchTab({ selectedIds, onToggle, isFull }: SearchTabProps) {
-  const [minPrice, setMinPrice] = useState(0);         // 予算の下限スライダー（0＝指定なし）
-  const [maxPrice, setMaxPrice] = useState(PRICE_MAX); // 予算の上限スライダー（最大＝指定なし）
+  const [lowPrice, setLowPrice] = useState(0);          // 予算の下限（0＝下限なし）
+  const [highPrice, setHighPrice] = useState(PRICE_MAX); // 予算の上限（15,000＝上限なし）
   const [age, setAge] = useState("");                  // 選んだ年代
   const [searched, setSearched] = useState<Searched | null>(null); // 最後に検索した条件
   const [page, setPage] = useState(1);                 // 表示中のページ（1から）
@@ -72,8 +74,8 @@ export default function SearchTab({ selectedIds, onToggle, isFull }: SearchTabPr
     e.preventDefault(); // ページの再読み込みを止める
     const cond: Searched = {
       age,
-      min: minPrice > 0 ? minPrice : undefined,            // 0 は指定なし
-      max: maxPrice < PRICE_MAX ? maxPrice : undefined,    // 最大値は指定なし
+      min: lowPrice > 0 ? lowPrice : undefined,              // 0円は下限なし
+      max: highPrice < PRICE_MAX ? highPrice : undefined,    // 15,000円は上限なし
     };
     setSearched(cond);
     load(cond, 1);
@@ -87,32 +89,39 @@ export default function SearchTab({ selectedIds, onToggle, isFull }: SearchTabPr
   }
 
   // スライダーを動かす：下限が上限を超えないようにする
-  function onMin(v: number) { setMinPrice(Math.min(v, maxPrice)); }
-  function onMax(v: number) { setMaxPrice(Math.max(v, minPrice)); }
+  // つまみを動かす：下限と上限が重ならないよう、最低1刻みは離す
+  function onLow(v: number) { setLowPrice(Math.min(v, highPrice - PRICE_STEP)); }
+  function onHigh(v: number) { setHighPrice(Math.max(v, lowPrice + PRICE_STEP)); }
 
   const totalPages = result ? Math.max(1, Math.ceil(result.totalCandidates / PAGE_SIZE)) : 1;
   const yen = (v: number) => `${v.toLocaleString()}円`;
+  const budgetLabel = `${lowPrice === 0 ? "下限なし" : yen(lowPrice)} 〜 ${highPrice >= PRICE_MAX ? "上限なし" : yen(highPrice)}`;
 
   return (
     <section>
       {/* 検索フォーム（トップ画面と同じ見た目のクラスを使う） */}
       <form className="form" style={{ marginTop: 0 }} onSubmit={onSearch}>
-        <label className="field" style={{ flex: "1 1 220px" }}>
-          予算の下限：{minPrice === 0 ? "指定なし" : `${yen(minPrice)}以上`}
-          <input
-            type="range" min={0} max={PRICE_MAX} step={PRICE_STEP}
-            value={minPrice} onChange={(e) => onMin(Number(e.target.value))}
-            style={{ padding: 0, accentColor: "var(--accent)" }}
-          />
-        </label>
-        <label className="field" style={{ flex: "1 1 220px" }}>
-          予算の上限：{maxPrice >= PRICE_MAX ? "指定なし" : `${yen(maxPrice)}以下`}
-          <input
-            type="range" min={0} max={PRICE_MAX} step={PRICE_STEP}
-            value={maxPrice} onChange={(e) => onMax(Number(e.target.value))}
-            style={{ padding: 0, accentColor: "var(--accent)" }}
-          />
-        </label>
+        <div className="field" style={{ flex: "1 1 260px" }}>
+          予算：{budgetLabel}
+          {/* 1本のバーに、下限・上限の2つのつまみ（range を2枚重ねている。見た目は globals.css の .dualRange） */}
+          <div className="dualRange">
+            <div className="dualTrack" />
+            <div
+              className="dualFill"
+              style={{ left: `${(lowPrice / PRICE_MAX) * 100}%`, right: `${100 - (highPrice / PRICE_MAX) * 100}%` }}
+            />
+            <input
+              type="range" min={0} max={PRICE_MAX} step={PRICE_STEP}
+              value={lowPrice} onChange={(e) => onLow(Number(e.target.value))}
+              aria-label="予算の下限"
+            />
+            <input
+              type="range" min={0} max={PRICE_MAX} step={PRICE_STEP}
+              value={highPrice} onChange={(e) => onHigh(Number(e.target.value))}
+              aria-label="予算の上限"
+            />
+          </div>
+        </div>
         <label className="field sel">
           相手の年代
           <select value={age} onChange={(e) => setAge(e.target.value)}>

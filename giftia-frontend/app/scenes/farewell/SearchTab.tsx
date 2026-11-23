@@ -12,39 +12,52 @@ export type SearchTabProps = {
 };
 
 const SCENE_CODE = "farewell"; // おすすめAPIのシーン
-const LIMIT = 20;              // 表示する件数
+const PAGE_SIZE = 20;          // 1ページの件数
 
-// 予算（下限・上限）の選択肢（円）。下限は「以上」、上限は「以下」として API に送る
-const PRICES = [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000];
+// 予算スライダーの範囲（円）。下限は0＝指定なし、上限は最大値＝指定なし
+const PRICE_MAX = 30000;
+const PRICE_STEP = 1000;
 
 // 相手の年代の選択肢（API の age_group と同じ表記）
 const AGES = ["10代", "20代", "30代", "40代", "50代", "60代以上"];
 
-export default function SearchTab({ selectedIds, onToggle, isFull }: SearchTabProps) {
-  const [minPrice, setMinPrice] = useState(""); // 予算の下限（空は指定なし）
-  const [maxPrice, setMaxPrice] = useState(""); // 予算の上限（空は指定なし）
-  const [age, setAge] = useState("");       // 選んだ年代
-  const [result, setResult] = useState<RecommendationResult | null>(null); // 検索結果（null は、まだ結果が来ていない）
-  const [error, setError] = useState("");   // つながらないときや、条件がおかしいときの文言
-  const [loading, setLoading] = useState(false); // 検索中
-  const latest = useRef(0);                 // 一番新しい検索の番号（古い検索の結果で上書きしないため）
+// 検索ボタンを押した時点の条件（ページ送りは、この条件のまま行う）
+type Searched = { age: string; min?: number; max?: number };
 
-  // 条件を API に送り、点数の高い順の結果をもらう（結果が返るまで待つ＝async/await）
-  async function runSearch() {
-    const min = minPrice === "" ? undefined : Number(minPrice);
-    const max = maxPrice === "" ? undefined : Number(maxPrice);
-    if (min !== undefined && max !== undefined && min > max) {
-      setResult(null);
-      setError("予算の下限が上限より大きくなっています。選び直してください。");
-      return;
-    }
+// 「前へ」「次へ」ボタンの見た目
+const pagerStyle: React.CSSProperties = {
+  height: "44px", padding: "0 24px", border: "1px solid var(--line-strong)", borderRadius: "var(--radius-control)",
+  background: "var(--surface)", color: "var(--ink)", fontSize: "15px", fontFamily: "inherit", cursor: "pointer",
+};
+
+export default function SearchTab({ selectedIds, onToggle, isFull }: SearchTabProps) {
+  const [minPrice, setMinPrice] = useState(0);         // 予算の下限スライダー（0＝指定なし）
+  const [maxPrice, setMaxPrice] = useState(PRICE_MAX); // 予算の上限スライダー（最大＝指定なし）
+  const [age, setAge] = useState("");                  // 選んだ年代
+  const [searched, setSearched] = useState<Searched | null>(null); // 最後に検索した条件
+  const [page, setPage] = useState(1);                 // 表示中のページ（1から）
+  const [result, setResult] = useState<RecommendationResult | null>(null); // 検索結果（null は、まだ結果が来ていない）
+  const [error, setError] = useState("");              // つながらないときの文言
+  const [loading, setLoading] = useState(false);       // 検索中
+  const latest = useRef(0);                            // 一番新しい検索の番号（古い検索の結果で上書きしないため）
+  const top = useRef<HTMLDivElement>(null);            // ページを変えたとき、結果の先頭へ戻す位置
+
+  // 条件とページを API に送り、点数の高い順の結果をもらう（結果が返るまで待つ＝async/await）
+  async function load(cond: Searched, pageNumber: number) {
     const myNumber = ++latest.current;
     setLoading(true);
     try {
-      const found = await fetchRecommendations(SCENE_CODE, { ageGroup: age, priceMin: min, priceMax: max, limit: LIMIT });
+      const found = await fetchRecommendations(SCENE_CODE, {
+        ageGroup: cond.age,
+        priceMin: cond.min,
+        priceMax: cond.max,
+        limit: PAGE_SIZE,
+        offset: (pageNumber - 1) * PAGE_SIZE,
+      });
       if (myNumber !== latest.current) return; // もっと新しい検索があるので、この結果は使わない
       setError("");
       setResult(found);
+      setPage(pageNumber);
     } catch (err) {
       if (myNumber !== latest.current) return;
       setResult(null);
@@ -54,33 +67,51 @@ export default function SearchTab({ selectedIds, onToggle, isFull }: SearchTabPr
     }
   }
 
-  // 検索ボタン
+  // 検索ボタン（押したときだけ検索する。1ページ目から）
   function onSearch(e: React.FormEvent) {
     e.preventDefault(); // ページの再読み込みを止める
-    runSearch(); // 検索ボタンを押したときだけ検索する
+    const cond: Searched = {
+      age,
+      min: minPrice > 0 ? minPrice : undefined,            // 0 は指定なし
+      max: maxPrice < PRICE_MAX ? maxPrice : undefined,    // 最大値は指定なし
+    };
+    setSearched(cond);
+    load(cond, 1);
   }
+
+  // ページ送り
+  function goPage(n: number) {
+    if (!searched) return;
+    load(searched, n);
+    top.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  // スライダーを動かす：下限が上限を超えないようにする
+  function onMin(v: number) { setMinPrice(Math.min(v, maxPrice)); }
+  function onMax(v: number) { setMaxPrice(Math.max(v, minPrice)); }
+
+  const totalPages = result ? Math.max(1, Math.ceil(result.totalCandidates / PAGE_SIZE)) : 1;
+  const yen = (v: number) => `${v.toLocaleString()}円`;
 
   return (
     <section>
       {/* 検索フォーム（トップ画面と同じ見た目のクラスを使う） */}
       <form className="form" style={{ marginTop: 0 }} onSubmit={onSearch}>
-        <label className="field sel">
-          予算の下限
-          <select value={minPrice} onChange={(e) => setMinPrice(e.target.value)}>
-            <option value="">指定なし</option>
-            {PRICES.map((v) => (
-              <option key={v} value={v}>{v.toLocaleString()}円以上</option>
-            ))}
-          </select>
+        <label className="field" style={{ flex: "1 1 220px" }}>
+          予算の下限：{minPrice === 0 ? "指定なし" : `${yen(minPrice)}以上`}
+          <input
+            type="range" min={0} max={PRICE_MAX} step={PRICE_STEP}
+            value={minPrice} onChange={(e) => onMin(Number(e.target.value))}
+            style={{ padding: 0, accentColor: "var(--accent)" }}
+          />
         </label>
-        <label className="field sel">
-          予算の上限
-          <select value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)}>
-            <option value="">指定なし</option>
-            {PRICES.map((v) => (
-              <option key={v} value={v}>{v.toLocaleString()}円以下</option>
-            ))}
-          </select>
+        <label className="field" style={{ flex: "1 1 220px" }}>
+          予算の上限：{maxPrice >= PRICE_MAX ? "指定なし" : `${yen(maxPrice)}以下`}
+          <input
+            type="range" min={0} max={PRICE_MAX} step={PRICE_STEP}
+            value={maxPrice} onChange={(e) => onMax(Number(e.target.value))}
+            style={{ padding: 0, accentColor: "var(--accent)" }}
+          />
         </label>
         <label className="field sel">
           相手の年代
@@ -100,8 +131,8 @@ export default function SearchTab({ selectedIds, onToggle, isFull }: SearchTabPr
         <p className="summary">予算と年代を選んで、「検索」を押してください（指定しなくても検索できます）。</p>
       )}
 
-      {result && !loading && (
-        <div style={{ marginTop: "20px" }}>
+      {result && (
+        <div ref={top} style={{ marginTop: "20px", scrollMarginTop: "16px" }}>
           {/* 年代で0件だったので、年代を外して取り直したとき */}
           {result.relaxed && (
             <p style={{ color: "var(--accent)", fontWeight: "bold", fontSize: "14px" }}>
@@ -110,7 +141,7 @@ export default function SearchTab({ selectedIds, onToggle, isFull }: SearchTabPr
           )}
 
           <p className="summary">
-            送別向けの商品 {result.totalCandidates} 件のうち、おすすめ順に上位 {result.results.length} 件
+            送別向けの商品 {result.totalCandidates} 件のうち、おすすめ順 {result.results.length > 0 ? `${result.results[0].rank}〜${result.results[result.results.length - 1].rank}` : 0} 件目（{page} / {totalPages} ページ）
           </p>
           {result.results.length === 0 && (
             <p className="summary">条件に合う商品がありません。予算を変えてみてください。</p>
@@ -161,6 +192,15 @@ export default function SearchTab({ selectedIds, onToggle, isFull }: SearchTabPr
               );
             })}
           </div>
+
+          {/* ページ送り */}
+          {totalPages > 1 && (
+            <nav style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "16px", marginTop: "20px" }}>
+              <button type="button" onClick={() => goPage(page - 1)} disabled={loading || page <= 1} style={pagerStyle}>前へ</button>
+              <span style={{ fontSize: "14px", color: "var(--sub)" }}>{page} / {totalPages} ページ</span>
+              <button type="button" onClick={() => goPage(page + 1)} disabled={loading || page >= totalPages} style={pagerStyle}>次へ</button>
+            </nav>
+          )}
         </div>
       )}
     </section>

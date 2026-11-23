@@ -76,7 +76,8 @@ export type RecommendationCondition = {
   ageGroup?: string; // 10代／20代／30代／40代／50代／60代以上
   priceMin?: number; // 予算の下限（以上）
   priceMax?: number; // 予算の上限（以下）
-  limit?: number;    // 返す件数
+  limit?: number;    // 1ページの件数
+  offset?: number;   // 何件目から（ページ送り用。0 が1ページ目）
 };
 
 // シーン別のおすすめを、点数の高い順にもらう（sceneCode は "farewell" のみ対応）
@@ -86,6 +87,7 @@ export async function fetchRecommendations(sceneCode: string, c: RecommendationC
   if (c.priceMin !== undefined) params.set("price_min", String(c.priceMin));
   if (c.priceMax !== undefined) params.set("price_max", String(c.priceMax));
   if (c.limit !== undefined) params.set("limit", String(c.limit));
+  if (c.offset !== undefined) params.set("offset", String(c.offset));
 
   const res = await fetch(`${API}/api/scenes/${encodeURIComponent(sceneCode)}/recommendations?${params.toString()}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);

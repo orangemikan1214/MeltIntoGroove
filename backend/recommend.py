@@ -60,7 +60,8 @@ def scene_recommendations(
     age_group: str = Query(default="", description="相手の年代（10代／20代／30代／40代／50代／60代以上。空なら指定なし）"),
     price_min: int | None = Query(default=None, ge=0, description="予算の下限（以上）"),
     price_max: int | None = Query(default=None, ge=0, description="予算の上限（以下）"),
-    limit: int = Query(default=20, ge=1, le=100, description="返す件数"),
+    limit: int = Query(default=20, ge=1, le=100, description="1ページに返す件数"),
+    offset: int = Query(default=0, ge=0, description="何件目から返すか（2ページ目は limit と同じ値）"),
 ):
     """シーン別に候補を絞り、点数の高い順に返す"""
     # ① 入力のチェック
@@ -89,8 +90,8 @@ def scene_recommendations(
 
     # ⑤ 画面に返す形にする
     results = [
-        to_result(item, i + 1, sales_rank, scene_tag)
-        for i, item in enumerate(ranked[:limit])
+        to_result(item, offset + i + 1, sales_rank, scene_tag)
+        for i, item in enumerate(ranked[offset:offset + limit])
     ]
     return {
         "scene": scene_tag,

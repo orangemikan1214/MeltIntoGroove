@@ -18,6 +18,7 @@ import uuid
 from typing import Literal
 from database import fetch_all, create_vote, get_vote, get_vote_for_response, save_ballots, list_votes, find_scene_product_ids
 from recommend import router as recommend_router  # シーン別の検索（FR-02）
+from recommend import reasons_for_products  # 投票ページ用
 
 load_dotenv()  # .env を読む（DB の接続情報・CORS の許可）
 
@@ -141,7 +142,7 @@ def get_vote_detail(token: str, voter_key: str | None = None):
     vote = get_vote(token, key)
     if vote is None:
         raise HTTPException(status_code=404, detail="この投票ページは見つかりません")
-    return vote
+    return with_reasons(vote)  # 投票の各商品に、推薦理由 reasons を足す
 
 class AnswerIn(BaseModel):
     product_id: str
@@ -178,11 +179,18 @@ def post_vote_response(token: str, body: ResponseIn):
     # 4. 保存して、最新の投票内容を返す
     answers = {answer.product_id: answer.value for answer in body.answers}
     save_ballots(vote["vote_id"], voter_key, body.nickname.strip(), answers)
-    return get_vote(token, voter_key)  # 保存後の最新の投票内容を返す（自分の回答に is_me が付く）
+    return with_reasons(get_vote(token, voter_key))  # 保存後の最新の投票内容を返す（自分の回答に is_me が付く）
 
 @app.get("/api/votes")
 def get_my_votes():
     """マイページの一覧（自分が作った投票ページ。新しい順。期限切れも含む）"""
     votes = list_votes(CURRENT_USER_ID)
     return {"total": len(votes), "votes": votes}
+
+def with_reasons(vote: dict) -> dict:
+    """投票の各商品（items）に、推薦理由 reasons を足す。特集から選んだ等で理由がなければ None"""
+    reasons = reasons_for_products("送別", [i["product_id"] for i in vote["items"]])
+    for item in vote["items"]:
+        item["reasons"] = reasons.get(item["product_id"])
+    return vote
 # ===== 投票機能（ここまで） =====

@@ -59,8 +59,17 @@ export type VoteProduct = {
   review_count: number | null;
 };
 
+// 推薦理由（検索結果の reasons と同じ形）
+export type VoteReasons = {
+  conditions: string[];
+  sales_rank: number | null;
+  rating: number;
+  review_count: number;
+  text: string;
+};
+
 // 候補1つぶん（商品の情報＋賛成・反対の数）
-export type VoteItem = VoteProduct & { good_count: number; bad_count: number };
+export type VoteItem = VoteProduct & { good_count: number; bad_count: number; reasons?: VoteReasons | null };
 
 export type VoteAnswerValue = "good" | "bad";
 

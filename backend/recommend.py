@@ -39,6 +39,7 @@ CONDITIONS = [
     ("useful_for_work", "仕事で使える"),
     ("mild_scent", "香りが強くない"),
     ("consumer_goods", "消費財"),
+    ("portable", "持ち運びやすい"),
 ]
 
 SHELF_LIFE_MIN_DAYS = 14  # 日持ち：この日数以上なら満たす
@@ -46,7 +47,7 @@ SHELF_LIFE_MIN_DAYS = 14  # 日持ち：この日数以上なら満たす
 # 点数の重み
 W_SALES = 0.4   # 売れ筋
 W_RATING = 0.2  # 評価
-SAFE_POINT = 0.05  # 安心条件：1つ満たすごとの加点（0.4÷8。7つ全部満たすと 0.35）
+SAFE_POINT = 0.05  # 安心条件：1つ満たすごとの加点（0.4÷8。8つ全部満たすと 0.4）
 
 REVIEW_COUNT_CAP = 50  # レビュー件数がこの数に届かない高評価は割り引く
 

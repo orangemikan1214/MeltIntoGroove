@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { fetchRecommendations, type RecommendationResult } from "@/lib/api";
 
 // 検索画面タブ（送別ギフトのおすすめを、予算と年代で絞って、投票の候補にチェックを付ける）
@@ -14,31 +14,34 @@ export type SearchTabProps = {
 const SCENE_CODE = "farewell"; // おすすめAPIのシーン
 const LIMIT = 20;              // 表示する件数
 
-// 予算の選択肢 → API に送る下限・上限（空の項目は「指定なし」）
-const BUDGETS = [
-  { value: "", label: "すべての予算", min: undefined, max: undefined },
-  { value: "under3000", label: "〜2,999円", min: undefined, max: 2999 },
-  { value: "3000", label: "3,000〜4,999円", min: 3000, max: 4999 },
-  { value: "5000", label: "5,000〜9,999円", min: 5000, max: 9999 },
-  { value: "10000", label: "10,000円以上", min: 10000, max: undefined },
-];
+// 予算（下限・上限）の選択肢（円）。下限は「以上」、上限は「以下」として API に送る
+const PRICES = [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000];
 
 // 相手の年代の選択肢（API の age_group と同じ表記）
 const AGES = ["10代", "20代", "30代", "40代", "50代", "60代以上"];
 
 export default function SearchTab({ selectedIds, onToggle, isFull }: SearchTabProps) {
-  const [budget, setBudget] = useState(""); // 選んだ予算
+  const [minPrice, setMinPrice] = useState(""); // 予算の下限（空は指定なし）
+  const [maxPrice, setMaxPrice] = useState(""); // 予算の上限（空は指定なし）
   const [age, setAge] = useState("");       // 選んだ年代
   const [result, setResult] = useState<RecommendationResult | null>(null); // 検索結果（null は、まだ結果が来ていない）
-  const [error, setError] = useState("");   // つながらないときの文言
+  const [error, setError] = useState("");   // つながらないときや、条件がおかしいときの文言
+  const [loading, setLoading] = useState(false); // 検索中
   const latest = useRef(0);                 // 一番新しい検索の番号（古い検索の結果で上書きしないため）
 
   // 条件を API に送り、点数の高い順の結果をもらう（結果が返るまで待つ＝async/await）
-  async function runSearch(budgetValue: string, ageGroup: string) {
+  async function runSearch() {
+    const min = minPrice === "" ? undefined : Number(minPrice);
+    const max = maxPrice === "" ? undefined : Number(maxPrice);
+    if (min !== undefined && max !== undefined && min > max) {
+      setResult(null);
+      setError("予算の下限が上限より大きくなっています。選び直してください。");
+      return;
+    }
     const myNumber = ++latest.current;
-    const range = BUDGETS.find((b) => b.value === budgetValue) ?? BUDGETS[0];
+    setLoading(true);
     try {
-      const found = await fetchRecommendations(SCENE_CODE, { ageGroup, priceMin: range.min, priceMax: range.max, limit: LIMIT });
+      const found = await fetchRecommendations(SCENE_CODE, { ageGroup: age, priceMin: min, priceMax: max, limit: LIMIT });
       if (myNumber !== latest.current) return; // もっと新しい検索があるので、この結果は使わない
       setError("");
       setResult(found);
@@ -46,23 +49,15 @@ export default function SearchTab({ selectedIds, onToggle, isFull }: SearchTabPr
       if (myNumber !== latest.current) return;
       setResult(null);
       setError(`APIにつながりません：${(err as Error).message}`);
+    } finally {
+      if (myNumber === latest.current) setLoading(false);
     }
   }
-
-  // タブを開いたとき、条件なしで1回検索して、おすすめ順の送別ギフトを出す
-  // （エフェクトの中では、通信が終わったあとの then / catch の中で setState する）
-  useEffect(() => {
-    let cancelled = false; // タブを閉じたあとに結果が返ってきても、何もしない
-    fetchRecommendations(SCENE_CODE, { limit: LIMIT })
-      .then((found) => { if (!cancelled) setResult(found); })
-      .catch((err: Error) => { if (!cancelled) setError(`APIにつながりません：${err.message}`); });
-    return () => { cancelled = true; };
-  }, []);
 
   // 検索ボタン
   function onSearch(e: React.FormEvent) {
     e.preventDefault(); // ページの再読み込みを止める
-    runSearch(budget, age);
+    runSearch(); // 検索ボタンを押したときだけ検索する
   }
 
   return (
@@ -70,10 +65,20 @@ export default function SearchTab({ selectedIds, onToggle, isFull }: SearchTabPr
       {/* 検索フォーム（トップ画面と同じ見た目のクラスを使う） */}
       <form className="form" style={{ marginTop: 0 }} onSubmit={onSearch}>
         <label className="field sel">
-          予算
-          <select value={budget} onChange={(e) => setBudget(e.target.value)}>
-            {BUDGETS.map((b) => (
-              <option key={b.value} value={b.value}>{b.label}</option>
+          予算の下限
+          <select value={minPrice} onChange={(e) => setMinPrice(e.target.value)}>
+            <option value="">指定なし</option>
+            {PRICES.map((v) => (
+              <option key={v} value={v}>{v.toLocaleString()}円以上</option>
+            ))}
+          </select>
+        </label>
+        <label className="field sel">
+          予算の上限
+          <select value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)}>
+            <option value="">指定なし</option>
+            {PRICES.map((v) => (
+              <option key={v} value={v}>{v.toLocaleString()}円以下</option>
             ))}
           </select>
         </label>
@@ -86,13 +91,16 @@ export default function SearchTab({ selectedIds, onToggle, isFull }: SearchTabPr
             ))}
           </select>
         </label>
-        <button type="submit">検索</button>
+        <button type="submit" disabled={loading}>検索</button>
       </form>
 
       {error && <p className="summary">{error}</p>}
-      {!error && result === null && <p className="summary">検索中…</p>}
+      {!error && loading && <p className="summary">検索中…</p>}
+      {!error && !loading && result === null && (
+        <p className="summary">予算と年代を選んで、「検索」を押してください（指定しなくても検索できます）。</p>
+      )}
 
-      {result && (
+      {result && !loading && (
         <div style={{ marginTop: "20px" }}>
           {/* 年代で0件だったので、年代を外して取り直したとき */}
           {result.relaxed && (

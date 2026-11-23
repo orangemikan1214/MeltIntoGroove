@@ -68,6 +68,13 @@ export default function Home() {
                     <option value="コスメ">コスメ</option>
                     <option value="食品">食品</option>
                     <option value="生活雑貨">生活雑貨</option>
+                    <option value="飲料">飲料</option>
+                    <option value="家電">家電</option>
+                    <option value="インテリア">インテリア</option>
+                    <option value="ビジネス小物">ビジネス小物</option>
+                    <option value="フラワー">フラワー</option>
+                    <option value="酒類">酒類</option>
+                    <option value="カタログギフト">カタログギフト</option>
                   </select>
                 </label>
                  {/* シーン → 検索条件 sceneTag（※lib/api.ts はまだ API に送っていないので、いまは絞り込みに使われない） */}

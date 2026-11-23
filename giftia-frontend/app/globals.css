@@ -83,3 +83,15 @@ a.sceneCard:hover { border-color: var(--accent); }
 .sceneName { font-family: var(--font-heading), "Hiragino Mincho ProN", "Yu Mincho", serif; font-weight: 700; font-size: 19px; }
 .sceneLink { font-size: 13px; font-weight: 700; color: var(--accent); }
 .sceneLink.soon { font-weight: 500; color: var(--sub); }
+
+/* 予算スライダー：1本のバーに、下限・上限の2つのつまみ（range を2枚重ね、つまみだけ操作できるようにする） */
+.dualRange { position: relative; height: 44px; margin: 0 10px; }
+.dualTrack, .dualFill { position: absolute; top: 50%; height: 4px; margin-top: -2px; }
+.dualTrack { left: 0; right: 0; background: var(--line-strong); }
+.dualFill { background: var(--accent); }
+.dualRange input[type="range"] { position: absolute; left: -10px; top: 0; width: calc(100% + 20px); height: 44px; margin: 0; padding: 0; border: 0; background: none; pointer-events: none; -webkit-appearance: none; appearance: none; }
+.dualRange input[type="range"]::-webkit-slider-runnable-track { background: none; border: 0; height: 44px; }
+.dualRange input[type="range"]::-moz-range-track { background: none; border: 0; }
+.dualRange input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; pointer-events: auto; width: 22px; height: 22px; margin-top: 11px; border-radius: 50%; background: var(--surface); border: 2px solid var(--accent); cursor: pointer; }
+.dualRange input[type="range"]::-moz-range-thumb { pointer-events: auto; width: 18px; height: 18px; border-radius: 50%; background: var(--surface); border: 2px solid var(--accent); cursor: pointer; }
+.dualRange input[type="range"]:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--accent-dark); outline-offset: 2px; }

@@ -189,7 +189,13 @@ export default function FarewellPage() {
         )}
 
         {/* 検索画面タブ */}
-        {tab === "search" && <p style={styles.meta}>（検索画面は、あとで作ります）</p>}
+        {tab === "search" && (
+          <SearchTab
+            selectedIds={selectedIds}
+            onToggle={toggle}
+            isFull={selectedIds.length >= 5}
+          />
+        )}
 
         {/* 画面の下に付いてくる、選んだ数と「投票ページを作る」ボタン */}
         <div style={styles.selectionBar}>
@@ -216,9 +222,8 @@ export default function FarewellPage() {
 const styles: { [key: string]: React.CSSProperties } = {
   page: {
     minHeight: "100vh",
-    backgroundColor: "#FAF8F5",
-    color: "#1F2328",
-    fontFamily: '"Noto Sans JP", sans-serif',
+    backgroundColor: "var(--bg)",
+    color: "var(--ink)",
   },
   container: {
     maxWidth: "1100px",
@@ -226,7 +231,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: "32px 20px",
   },
   breadcrumb: {
-    color: "#5B6168",
+    color: "var(--sub)",
     fontSize: "14px",
     margin: "0",
   },
@@ -237,25 +242,25 @@ const styles: { [key: string]: React.CSSProperties } = {
   tabs: {
     display: "flex",
     gap: "8px",
-    borderBottom: "2px solid #E3DED6",
+    borderBottom: "2px solid var(--line)",
     marginBottom: "24px",
   },
   tab: {
     minHeight: "44px",
     padding: "0 20px",
     border: "1px solid transparent",
-    borderRadius: "8px 8px 0 0",
+    borderRadius: 0,
     backgroundColor: "transparent",
-    color: "#1F2328",
+    color: "var(--ink)",
     fontSize: "15px",
     cursor: "pointer",
   },
   tabActive: {
     minHeight: "44px",
     padding: "0 20px",
-    border: "1px solid #BE185D",
-    borderRadius: "8px 8px 0 0",
-    backgroundColor: "#BE185D",
+    border: "1px solid var(--accent)",
+    borderRadius: 0,
+    backgroundColor: "var(--accent)",
     color: "#FFFFFF",
     fontSize: "15px",
     fontWeight: "bold",
@@ -264,13 +269,13 @@ const styles: { [key: string]: React.CSSProperties } = {
   guideCard: {
     padding: "20px",
     marginBottom: "24px",
-    backgroundColor: "#FFFFFF",
-    border: "1px solid #E3DED6",
-    borderRadius: "12px",
+    backgroundColor: "var(--surface)",
+    border: "1px solid var(--line)",
+    borderRadius: "var(--radius-card)",
     lineHeight: 1.7,
   },
   draftNote: {
-    color: "#5B6168",
+    color: "var(--sub)",
     fontSize: "13px",
     margin: "0 0 4px",
   },
@@ -285,10 +290,10 @@ const styles: { [key: string]: React.CSSProperties } = {
   guideList: {
     margin: "0",
     paddingLeft: "20px",
-    color: "#4A5057",
+    color: "var(--sub)",
   },
   meta: {
-    color: "#5B6168",
+    color: "var(--sub)",
     fontSize: "14px",
   },
 
@@ -306,21 +311,21 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: "16px",
     alignItems: "flex-start",
     padding: "16px",
-    backgroundColor: "#FFFFFF",
-    border: "1px solid #E3DED6",
-    borderRadius: "12px",
+    backgroundColor: "var(--surface)",
+    border: "1px solid var(--line)",
+    borderRadius: "var(--radius-card)",
   },
   rank: {
     width: "56px",
     fontSize: "26px",
     fontWeight: "bold",
-    color: "#BE185D",
+    color: "var(--accent)",
   },
   imageBox: {
     width: "112px",
     height: "112px",
-    backgroundColor: "#ECE8E1",
-    borderRadius: "8px",
+    backgroundColor: "var(--tint)",
+    borderRadius: "var(--radius-control)",
   },
   productBody: {
     flex: "1",
@@ -331,7 +336,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     margin: "0",
   },
   brand: {
-    color: "#5B6168",
+    color: "var(--sub)",
     fontSize: "14px",
     fontWeight: "normal",
   },
@@ -342,9 +347,9 @@ const styles: { [key: string]: React.CSSProperties } = {
     display: "inline-block",
     padding: "2px 10px",
     margin: "2px 4px 2px 0",
-    borderRadius: "999px",
-    backgroundColor: "#FCE7F3",
-    color: "#831843",
+    borderRadius: "var(--radius-control)",
+    backgroundColor: "var(--tint)",
+    color: "var(--accent-dark)",
     fontSize: "13px",
   },
   reason: {
@@ -374,16 +379,16 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: "12px",
     marginTop: "24px",
     padding: "12px 20px",
-    backgroundColor: "#FFFFFF",
-    border: "1px solid #BE185D",
-    borderRadius: "12px",
+    backgroundColor: "var(--surface)",
+    border: "1px solid var(--accent)",
+    borderRadius: "var(--radius-card)",
   },
   createButton: {
     minHeight: "44px",
     padding: "0 24px",
     border: "none",
-    borderRadius: "8px",
-    backgroundColor: "#BE185D",
+    borderRadius: "var(--radius-control)",
+    backgroundColor: "var(--accent)",
     color: "#FFFFFF",
     fontSize: "15px",
     fontWeight: "bold",
@@ -393,16 +398,16 @@ const styles: { [key: string]: React.CSSProperties } = {
     minHeight: "44px",
     padding: "0 24px",
     border: "none",
-    borderRadius: "8px",
-    backgroundColor: "#D9D4CC",
-    color: "#4A5057",
+    borderRadius: "var(--radius-control)",
+    backgroundColor: "var(--line)",
+    color: "var(--sub)",
     fontSize: "15px",
     fontWeight: "bold",
     cursor: "not-allowed",
   },
   barError: {
     width: "100%",
-    color: "#BE185D",
+    color: "var(--accent)",
     fontWeight: "bold",
     fontSize: "14px",
   },

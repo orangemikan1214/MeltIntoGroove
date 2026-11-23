@@ -15,7 +15,6 @@ export default function Home() {
   const [mode] = useState<"standard" | "business">("standard"); // どのタブか（取引先へのお礼タブは画面から外したので、いまは常に standard）
   const [keyword, setKeyword] = useState("");                             // 入力した言葉
   const [category, setCategory] = useState("");                           // 選んだカテゴリー
-  const [sceneTag, setSceneTag] = useState("");                           // 選んだシーンタグ
   const [indivWrap, setIndivWrap] = useState(false); // 個包装だけ（取引先へのお礼）
   const [priceBand, setPriceBand] = useState("");                         // 価格帯（取引先へのお礼）
   const [results, setResults] = useState<Gift[] | null>(null);            // 検索結果
@@ -27,8 +26,8 @@ export default function Home() {
     setError("");
     // いま開いているタブの条件だけを送る（もう一方のタブの入力は送らない）
     const condition = mode === "standard"
-      ? { keyword, category, sceneTag, indivWrap: false, priceBand: "" }
-      : { keyword: "", category: "", sceneTag: "", indivWrap, priceBand };
+      ? { keyword, category, indivWrap: false, priceBand: "" }
+      : { keyword: "", category: "", indivWrap, priceBand };
     try {
       setResults(await searchGifts(condition));
     } catch (err) {
@@ -68,22 +67,6 @@ export default function Home() {
                     <option value="コスメ">コスメ</option>
                     <option value="食品">食品</option>
                     <option value="生活雑貨">生活雑貨</option>
-                  </select>
-                </label>
-                {/* シーン → 検索条件 sceneTag（※lib/api.ts はまだ API に送っていないので、いまは絞り込みに使われない） */}
-                <label className="field sel">
-                  シーン
-                  <select value={sceneTag} onChange={(e) => setSceneTag(e.target.value)}>
-                    <option value="">すべてのシーン</option>
-                    <option value="誕生日">誕生日</option>
-                    <option value="送別">送別</option>
-                    <option value="お礼">お礼</option>
-                    <option value="母の日">母の日</option>
-                    <option value="お歳暮">お歳暮</option>
-                    <option value="お中元">お中元</option>
-                    <option value="結婚祝い">結婚祝い</option>
-                    <option value="父の日">父の日</option>
-                    <option value="出産祝い">出産祝い</option>
                   </select>
                 </label>
               </>

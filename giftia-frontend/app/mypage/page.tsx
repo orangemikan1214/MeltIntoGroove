@@ -68,7 +68,7 @@ export default function MyPage() {
             {!loading && !error && activeVotes.length === 0 && (
               <p style={styles.meta}>
                 まだ投票ページがありません。
-                <Link href="/">トップページ</Link>から、送別ギフトの投票ページを作れます。
+                <Link href="/" style={{ color: "var(--accent)" }}>トップページ</Link>から、送別ギフトの投票ページを作れます。
               </p>
             )}
 
@@ -159,9 +159,8 @@ export default function MyPage() {
 const styles: { [key: string]: React.CSSProperties } = {
   page: {
     minHeight: "100vh",
-    backgroundColor: "#FAF8F5",
-    color: "#1F2328",
-    fontFamily: '"Noto Sans JP", sans-serif',
+    backgroundColor: "var(--bg)",
+    color: "var(--ink)",
   },
   container: {
     maxWidth: "1000px",
@@ -173,7 +172,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     margin: "0 0 4px",
   },
   description: {
-    color: "#5B6168",
+    color: "var(--sub)",
     marginBottom: "32px",
   },
   subHeading: {
@@ -191,9 +190,9 @@ const styles: { [key: string]: React.CSSProperties } = {
     flexWrap: "wrap",
     gap: "16px",
     padding: "20px",
-    backgroundColor: "#FFFFFF",
-    border: "1px solid #E3DED6",
-    borderRadius: "12px",
+    backgroundColor: "var(--surface)",
+    border: "1px solid var(--line)",
+    borderRadius: "var(--radius-card)",
   },
   voteInfo: {
     flex: "1",
@@ -203,7 +202,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "16px",
   },
   meta: {
-    color: "#5B6168",
+    color: "var(--sub)",
     fontSize: "14px",
     lineHeight: "1.8",
     margin: "8px 0 0",
@@ -218,8 +217,8 @@ const styles: { [key: string]: React.CSSProperties } = {
     alignItems: "center",
     justifyContent: "center",
     padding: "10px 18px",
-    borderRadius: "8px",
-    backgroundColor: "#BE185D",
+    borderRadius: "var(--radius-control)",
+    backgroundColor: "var(--accent)",
     color: "#FFFFFF",
     textDecoration: "none",
     border: "none",
@@ -231,11 +230,11 @@ const styles: { [key: string]: React.CSSProperties } = {
     alignItems: "center",
     justifyContent: "center",
     padding: "10px 18px",
-    borderRadius: "8px",
-    backgroundColor: "#FFFFFF",
-    color: "#1F2328",
+    borderRadius: "var(--radius-control)",
+    backgroundColor: "var(--surface)",
+    color: "var(--ink)",
     textDecoration: "none",
-    border: "1px solid #B9B2A7",
+    border: "1px solid var(--line-strong)",
     fontSize: "14px",
     cursor: "pointer",
   },
@@ -249,12 +248,12 @@ const styles: { [key: string]: React.CSSProperties } = {
     flexWrap: "wrap",
     gap: "16px",
     padding: "20px",
-    backgroundColor: "#F1EEE9",
-    color: "#4A5057",
-    borderRadius: "12px",
+    backgroundColor: "var(--tint-soft)",
+    color: "var(--sub)",
+    borderRadius: "var(--radius-card)",
   },
   copyMessage: {
-    color: "#BE185D",
+    color: "var(--accent)",
     fontWeight: "bold",
     marginBottom: "16px",
   },

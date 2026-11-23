@@ -39,6 +39,7 @@ CONDITIONS = [
     ("useful_for_work", "仕事で使える"),
     ("mild_scent", "香りが強くない"),
     ("consumer_goods", "消費財"),
+    ("portable", "持ち運びやすい"),
 ]
 
 SHELF_LIFE_MIN_DAYS = 14  # 日持ち：この日数以上なら満たす
@@ -46,7 +47,7 @@ SHELF_LIFE_MIN_DAYS = 14  # 日持ち：この日数以上なら満たす
 # 点数の重み
 W_SALES = 0.4   # 売れ筋
 W_RATING = 0.2  # 評価
-SAFE_POINT = 0.05  # 安心条件：1つ満たすごとの加点（0.4÷8。7つ全部満たすと 0.35）
+SAFE_POINT = 0.05  # 安心条件：1つ満たすごとの加点（0.4÷8。8つ全部満たすと 0.4）
 
 REVIEW_COUNT_CAP = 50  # レビュー件数がこの数に届かない高評価は割り引く
 
@@ -59,7 +60,8 @@ def scene_recommendations(
     age_group: str = Query(default="", description="相手の年代（10代／20代／30代／40代／50代／60代以上。空なら指定なし）"),
     price_min: int | None = Query(default=None, ge=0, description="予算の下限（以上）"),
     price_max: int | None = Query(default=None, ge=0, description="予算の上限（以下）"),
-    limit: int = Query(default=20, ge=1, le=100, description="返す件数"),
+    limit: int = Query(default=20, ge=1, le=100, description="1ページに返す件数"),
+    offset: int = Query(default=0, ge=0, description="何件目から返すか（2ページ目は limit と同じ値）"),
 ):
     """シーン別に候補を絞り、点数の高い順に返す"""
     # ① 入力のチェック
@@ -88,8 +90,8 @@ def scene_recommendations(
 
     # ⑤ 画面に返す形にする
     results = [
-        to_result(item, i + 1, sales_rank, scene_tag)
-        for i, item in enumerate(ranked[:limit])
+        to_result(item, offset + i + 1, sales_rank, scene_tag)
+        for i, item in enumerate(ranked[offset:offset + limit])
     ]
     return {
         "scene": scene_tag,
